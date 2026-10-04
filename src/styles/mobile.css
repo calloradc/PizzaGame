@@ -1,0 +1,597 @@
+/* A full-screen scene and a separate, fixed HUD. The world alone moves and scales. */
+.app.mobile-game {
+  --glass: #fffaf2ed;
+  --hud-shadow: 0 4px 14px #314b292c, inset 0 1px 0 #fff9;
+  --safe-top: max(12px, env(safe-area-inset-top));
+  --safe-bottom: max(12px, env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  display: block;
+  background: #aaca52;
+  isolation: isolate;
+}
+.app.mobile-game .scene-viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  z-index: 0;
+  --board-size: 96vmin;
+  --camera-x: 0px;
+  --camera-y: 0px;
+  --camera-zoom: 1;
+}
+.scene-viewport.dragging {
+  cursor: grabbing;
+}
+.world-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #aaca52;
+  pointer-events: none;
+}
+.camera-world {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--board-size);
+  height: var(--board-size);
+  aspect-ratio: 1;
+  transform-origin: center;
+  transform: translate3d(
+      calc(-50% + var(--camera-x)),
+      calc(-50% + var(--camera-y)),
+      0
+    )
+    scale(var(--camera-zoom));
+  will-change: transform;
+}
+.mobile-game #mapMount,
+.mobile-game .map {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  display: block;
+  overflow: visible;
+}
+.mobile-game .map {
+  background: transparent !important;
+}
+.mobile-game .top {
+  position: absolute;
+  top: var(--safe-top);
+  left: 12px;
+  right: 12px;
+  height: 42px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: #fffaf0;
+  box-shadow: none;
+  gap: 8px;
+  z-index: 30;
+  pointer-events: none;
+}
+.mobile-game .top::after {
+  display: none;
+}
+.mobile-game .logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: var(--glass);
+  box-shadow: var(--hud-shadow);
+}
+.mobile-game .logo .rasterSprite {
+  width: 36px;
+  height: 36px;
+}
+.mobile-game .wordmark {
+  font-size: 15px;
+  line-height: 1.1;
+  color: #fffdf3;
+  text-shadow: 0 2px 4px #35562899;
+  letter-spacing: -0.6px;
+}
+.mobile-game .wordmark small {
+  font-size: 7px;
+  color: #fff8dc;
+  letter-spacing: 1px;
+}
+.mobile-game .toptools {
+  margin-left: auto;
+  gap: 7px;
+  pointer-events: auto;
+}
+.mobile-game .top .iconbtn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #fff8;
+  border-radius: 16px;
+  background: var(--glass);
+  box-shadow: var(--hud-shadow);
+}
+.mobile-game .stats {
+  position: absolute;
+  top: calc(var(--safe-top) + 53px);
+  left: 12px;
+  width: min(320px, calc(100% - 24px));
+  height: auto;
+  padding: 0;
+  gap: 7px;
+  background: none;
+  z-index: 30;
+  pointer-events: none;
+}
+.mobile-game .stat {
+  min-width: 0;
+  height: 47px;
+  padding: 6px 9px;
+  gap: 5px;
+  border: 1px solid #fff8;
+  border-radius: 18px;
+  background: var(--glass);
+  box-shadow: var(--hud-shadow);
+}
+.mobile-game .stat .rasterSprite {
+  width: 27px;
+  height: 27px;
+  flex-shrink: 0;
+}
+.mobile-game .stat small {
+  font-size: 7px;
+  letter-spacing: 0.8px;
+}
+.mobile-game .stat strong {
+  font-size: 17px;
+  line-height: 1.1;
+}
+.mobile-game .waveMax {
+  font-size: 10px;
+}
+.mobile-game .levelbar {
+  position: absolute;
+  top: calc(var(--safe-top) + 108px);
+  left: 12px;
+  width: min(320px, calc(100% - 24px));
+  height: 32px;
+  padding: 0 0 0 10px;
+  gap: 8px;
+  border-radius: 13px;
+  background: #fffaf2d9;
+  box-shadow: var(--hud-shadow);
+  z-index: 30;
+  pointer-events: none;
+}
+.mobile-game .levelbar > span {
+  font-size: 8px;
+  white-space: nowrap;
+}
+.mobile-game .levelbar .line {
+  height: 4px;
+  min-width: 18px;
+}
+.mobile-game .levelbar button {
+  width: 44px;
+  min-width: 44px;
+  height: 32px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #765744;
+  background: #f2e1cbe8;
+  pointer-events: auto;
+}
+.scene-messages {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+.mobile-game .maptag {
+  top: calc(var(--safe-top) + 149px);
+  left: 14px;
+  background: #35542db3;
+  color: #fffadd;
+  border: 1px solid #fff3;
+  border-radius: 10px;
+  padding: 5px 8px;
+  font-size: 8px;
+  max-width: calc(100% - 90px);
+}
+.mobile-game .eventchip {
+  top: calc(var(--safe-top) + 178px);
+  right: auto;
+  left: 14px;
+  font-size: 8px;
+}
+.mobile-game .chapter {
+  display: none;
+}
+.mobile-game .quest {
+  top: calc(var(--safe-top) + 205px);
+  bottom: auto;
+  left: 14px;
+  right: auto;
+  font-size: 8px;
+  max-width: 235px;
+}
+.mobile-game .bossbar {
+  top: calc(var(--safe-top) + 148px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(280px, calc(100% - 110px));
+  font-size: 9px;
+}
+.mobile-game .bossbar.on ~ .quest {
+  display: none;
+}
+.mobile-game .toast {
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 154px);
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  transform: translate(-50%, 8px);
+  border: 1px solid #fff5;
+  border-radius: 17px;
+  padding: 11px 16px;
+  font-size: 12px;
+  background: #3a513bdf;
+  color: #fffaf0;
+}
+.mobile-game .toast.show {
+  transform: translate(-50%, 0);
+}
+.mobile-game .banner {
+  top: 40%;
+  left: 50%;
+  width: min(340px, calc(100% - 32px));
+}
+.mobile-game .aimhint {
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 152px);
+  left: 50%;
+  right: auto;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  transform: translateX(-50%);
+  font-size: 11px;
+}
+.mobile-game .screenhint {
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 157px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  border-radius: 16px;
+  padding: 10px 14px;
+  background: #35542dc2;
+  color: #fffaf0;
+  text-align: center;
+  font-size: 11px;
+}
+.mobile-game .screenhint small {
+  display: block;
+  font-size: 9px;
+  margin-top: 4px;
+  color: #f7edcb;
+}
+.mobile-game .milestone {
+  top: 35%;
+}
+.mobile-game .damageflash {
+  border-radius: 0;
+}
+.mobile-game .dock {
+  position: absolute;
+  bottom: var(--safe-bottom);
+  left: 12px;
+  right: 12px;
+  width: min(440px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 8px;
+  border: 1px solid #fff8;
+  border-radius: 24px;
+  background: #fffaf2d9;
+  box-shadow: 0 6px 24px #243d2933;
+  z-index: 30;
+}
+.mobile-game .abilities {
+  gap: 5px;
+  padding-bottom: 8px;
+}
+.mobile-game .ability {
+  height: 58px;
+  min-height: 58px;
+  padding: 4px 1px;
+  background: #fffdf5e8;
+  border: 1px solid #f0dfcb;
+  border-radius: 15px;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.mobile-game .ability .rasterSprite {
+  width: 27px;
+  height: 27px;
+  flex-shrink: 0;
+}
+.mobile-game .ability strong {
+  font-size: 9px;
+  font-weight: 700;
+}
+.mobile-game .ability small {
+  font-size: 8px;
+}
+.mobile-game .ability.active {
+  background: #fff0b4;
+  border-color: #dea859;
+}
+.mobile-game .dockactions {
+  gap: 6px;
+}
+.mobile-game .dockactions button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 15px;
+  font-size: 12px;
+  box-shadow: none;
+  background: #f0e0cce8;
+}
+.mobile-game .dockactions .wavebtn {
+  background: #4b9c69;
+  color: #fffdf0;
+}
+.mobile-game .nativefoot.bottomnav {
+  position: absolute;
+  top: calc(var(--safe-top) + 194px);
+  left: 12px;
+  width: 44px;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  flex-direction: column;
+  gap: 7px;
+  z-index: 30;
+}
+.mobile-game .nativefoot.bottomnav button {
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  flex: none;
+  padding: 7px;
+  border-radius: 15px;
+  border: 1px solid #fff8;
+  background: var(--glass);
+  box-shadow: var(--hud-shadow);
+}
+.mobile-game .nativefoot.bottomnav button span {
+  display: none;
+}
+.mobile-game .nativefoot .rasterSprite {
+  width: 27px;
+  height: 27px;
+}
+.camera-controls {
+  position: absolute;
+  top: calc(var(--safe-top) + 153px);
+  right: 12px;
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: default;
+  z-index: 25;
+}
+.camera-controls button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid #fff8;
+  border-radius: 15px;
+  background: var(--glass);
+  color: #735741;
+  box-shadow: var(--hud-shadow);
+  font-size: 25px;
+  font-weight: 500;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.camera-controls button svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+.zoom-readout {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff8e3;
+  text-shadow: 0 1px 3px #345622;
+  text-align: center;
+  padding: 1px 0;
+}
+.mobile-game .sheet {
+  z-index: 60;
+  left: 50%;
+  right: auto;
+  bottom: var(--safe-bottom);
+  width: min(480px, calc(100% - 24px));
+  max-height: min(67dvh, 620px);
+  padding: 10px 13px 14px;
+  background: #fff9ef;
+  border: 1px solid #fff;
+  border-radius: 25px;
+  transform: translate(-50%, calc(100% + 30px));
+  box-shadow: 0 10px 50px #203c3055;
+}
+.mobile-game .sheet.open {
+  transform: translate(-50%, 0);
+}
+.overlay {
+  z-index: 100;
+}
+
+@media (orientation: landscape) {
+  .mobile-game .stats,
+  .mobile-game .levelbar {
+    width: 280px;
+  }
+  .mobile-game .dock {
+    left: auto;
+    right: 12px;
+    width: 340px;
+    padding: 6px;
+  }
+  .mobile-game .ability {
+    height: 48px;
+    min-height: 48px;
+  }
+  .mobile-game .ability .rasterSprite {
+    width: 23px;
+    height: 23px;
+  }
+  .mobile-game .abilities {
+    padding-bottom: 5px;
+  }
+  .mobile-game .nativefoot.bottomnav {
+    top: auto;
+    bottom: var(--safe-bottom);
+    flex-direction: row;
+    width: auto;
+  }
+  .mobile-game .camera-controls {
+    top: calc(var(--safe-top) + 55px);
+  }
+  .mobile-game .sheet {
+    left: auto;
+    right: 12px;
+    width: min(440px, calc(100% - 24px));
+    max-height: calc(100dvh - 24px);
+    transform: translateY(calc(100% + 30px));
+  }
+  .mobile-game .sheet.open {
+    transform: translateY(0);
+  }
+  .mobile-game .screenhint,
+  .mobile-game .toast,
+  .mobile-game .aimhint {
+    bottom: calc(var(--safe-bottom) + 127px);
+  }
+}
+@media (max-width: 350px) {
+  .mobile-game .wordmark {
+    font-size: 12px;
+  }
+  .mobile-game .wordmark small {
+    font-size: 6px;
+  }
+  .mobile-game .stat {
+    padding: 5px 7px;
+    gap: 4px;
+  }
+  .mobile-game .stat .rasterSprite {
+    width: 23px;
+    height: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .camera-world {
+    will-change: auto;
+  }
+}
+
+.mobile-game .logo.menu-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid #fff8;
+  padding: 0;
+  pointer-events: auto;
+}
+.menu-mark {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 17px;
+  height: 17px;
+  font-size: 13px;
+  line-height: 16px;
+  border-radius: 6px;
+  background: #735c48;
+  color: #fff7df;
+  text-shadow: none;
+}
+.mobile-game .ability strong,
+.mobile-game .ability small {
+  align-self: center;
+  text-align: center;
+  margin: 0;
+  line-height: 1.05;
+  display: block;
+}
+.mobile-game .ability strong {
+  font-size: 10px;
+}
+.mobile-game .ability small {
+  font-size: 8px;
+}
+.mobile-game .nativefoot.bottomnav {
+  display: none;
+  top: calc(var(--safe-top) + 50px);
+  bottom: auto;
+  left: 12px;
+  right: auto;
+  width: 180px;
+  padding: 6px;
+  border: 1px solid #fff8;
+  border-radius: 20px;
+  background: #fff9eff5;
+  box-shadow: 0 6px 24px #243d2944;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 45;
+}
+.mobile-game .nativefoot.bottomnav.open {
+  display: flex;
+}
+.mobile-game .nativefoot.bottomnav button {
+  width: 100%;
+  flex-direction: row;
+  justify-content: start;
+  gap: 10px;
+  border: 0;
+  box-shadow: none;
+  background: #f4e7d6;
+  padding: 7px 11px;
+  border-radius: 14px;
+}
+.mobile-game .nativefoot.bottomnav button span {
+  display: inline;
+  font-size: 12px;
+}

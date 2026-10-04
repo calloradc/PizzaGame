@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Board, BuildSheet, GameModal, Icon } from "./components.jsx";
+import { BuildSheet, GameModal, Icon } from "./components.jsx";
 import { prepareRasterImages } from "./game/art.js";
 import { createGame } from "./game/engine.js";
 import { haptic } from "./game/audio.js";
 import { abilities, events, maps } from "./game/config.js";
+import { GameScene } from "./GameScene.jsx";
 import sprites from "./assets/sprites.svg?raw";
 
 const initialView = {
@@ -28,6 +29,7 @@ export default function App() {
   const [view, setView] = useState(initialView);
   const [status, setStatus] = useState("loading");
   const [fullscreen, setFullscreen] = useState(false);
+  const [gameMenu, setGameMenu] = useState(false);
   const [usedAbility, setUsedAbility] = useState(null);
   const abilityTimer = useRef(null);
   const actions = useRef(
@@ -70,6 +72,7 @@ export default function App() {
 
   useEffect(() => {
     document.body.classList.toggle("gamePaused", Boolean(view.modal));
+    if (view.modal) setGameMenu(false);
     return () => document.body.classList.remove("gamePaused");
   }, [view.modal]);
 
@@ -90,6 +93,8 @@ export default function App() {
     <div
       ref={root}
       onClickCapture={(event) => {
+        if (gameMenu && !event.target.closest(".bottomnav,.menu-trigger"))
+          setGameMenu(false);
         const button = event.target.closest("button");
         if (button && !button.disabled) {
           haptic(8);
@@ -103,12 +108,20 @@ export default function App() {
     >
       <div dangerouslySetInnerHTML={{ __html: sprites }} />
       <main
-        className={`app ${view.diff === 0 ? "casual" : ""} ${view.modal ? "modal-active" : ""}`}
+        className={`app mobile-game ${view.diff === 0 ? "casual" : ""} ${view.modal ? "modal-active" : ""}`}
       >
         <header className="top">
-          <div className="logo">
+          <button
+            className="logo menu-trigger"
+            aria-label="Меню игры"
+            aria-expanded={gameMenu}
+            onClick={() => setGameMenu(!gameMenu)}
+          >
             <Icon id="pizza" />
-          </div>
+            <span className="menu-mark" aria-hidden="true">
+              ≡
+            </span>
+          </button>
           <div className="wordmark">
             PIZZA PATROL<small>ВКУСНАЯ ОБОРОНА</small>
           </div>
@@ -177,12 +190,12 @@ export default function App() {
           </div>
           <button onClick={actions.setSpeed}>×{view.speed}</button>
         </div>
-        <div
-          className={`mapwrap ${view.map === 1 ? "night" : ""}`}
-          id="mapwrap"
-          style={{ background: ["#b5d08b", "#8db79f", "#d0d892"][view.map] }}
-        >
-          <Board />
+        <GameScene
+          blocked={Boolean(view.modal) || view.paused}
+          map={view.map}
+          diff={view.diff}
+        />
+        <div className="scene-messages" aria-live="off">
           <div className="maptag">
             {String(view.map + 1).padStart(2, "0")} ·{" "}
             {maps[view.map].name.toUpperCase()}
@@ -241,9 +254,10 @@ export default function App() {
               <small>{view.milestone.sub}</small>
             </div>
           )}
-          {!view.towers.length && !view.aim && (
+          {!view.towers.length && !view.aim && !view.toast && !view.banner && (
             <div className="screenhint">
-              Нажми на площадку — приготовим башню
+              Коснись плюса — поставим башню
+              <small>Двигай поле пальцем · масштабируй двумя</small>
             </div>
           )}
         </div>
@@ -319,7 +333,10 @@ export default function App() {
             </button>
           </div>
         </div>
-        <nav className="nativefoot bottomnav" aria-label="Меню игры">
+        <nav
+          className={`nativefoot bottomnav ${gameMenu ? "open" : ""}`}
+          aria-label="Дополнительное меню"
+        >
           <span className="srOnly">ЛУЧШИЙ: {view.meta.best}</span>
           <button
             aria-label="Награды"
@@ -332,7 +349,13 @@ export default function App() {
             <Icon id="i-intel" />
             <span>Помощь</span>
           </button>
-          <button aria-label="На весь экран" onClick={actions.fullscreen}>
+          <button
+            aria-label="На весь экран"
+            onClick={() => {
+              setGameMenu(false);
+              actions.fullscreen();
+            }}
+          >
             <Icon id="i-full" />
             <span>{fullscreen ? "Свернуть" : "Экран"}</span>
           </button>

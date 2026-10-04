@@ -231,14 +231,14 @@ function Intro({ view, actions }) {
             className={`choice ${view.chosenMap === index ? "active" : ""}`}
             onClick={() => actions.chooseMap(index)}
           >
-            <svg className="mapThumb" viewBox="0 0 420 450" aria-hidden="true">
+            <svg className="mapThumb" viewBox="0 0 450 450" aria-hidden="true">
               <image
                 href={gardenUrl}
-                width="420"
+                width="450"
                 height="450"
                 preserveAspectRatio="xMidYMid slice"
               />
-              <path d={map.path} />
+              <path d={map.path} transform="translate(15 0)" />
             </svg>
             {map.name}
             <small>{map.note}</small>
@@ -282,6 +282,10 @@ function Intro({ view, actions }) {
 
 function Help({ actions }) {
   const rules = [
+    [
+      "i-full",
+      "Поле можно двигать одним пальцем и приближать двумя. Кнопка прицела возвращает всю карту в центр. Управление всегда остаётся поверх карты.",
+    ],
     [
       "i-build",
       "Разные башни: коснись плюса на карте, выбери одну из 7 карточек, нажми «Поставить». Выбор сам по себе не тратит монеты.",
@@ -356,9 +360,9 @@ export function GameModal({ view, actions }) {
             </div>
           ))}
           <p>
-            Основной экран не прокручивается. Нижние панели закрываются
-            крестиком или свайпом вниз за верхний край. На телефоне можно
-            включить полный экран.
+            Двигай поле одним пальцем, меняй масштаб щипком или кнопками + и −.
+            Панели закрываются крестиком или свайпом вниз за верхний край. На
+            телефоне можно включить полный экран.
           </p>
           <button className="primary" onClick={actions.back}>
             Готово

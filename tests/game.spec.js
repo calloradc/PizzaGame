@@ -136,6 +136,10 @@ test("classic map, specialization and all menus", async ({ page }) => {
     ["Помощь", "Всё просто", "Понятно"],
     ["Награды", "Вкусные награды", "Назад"],
   ]) {
+    if (button === "Помощь" || button === "Награды")
+      await page
+        .getByRole("button", { name: "Меню игры", exact: true })
+        .click();
     await page.getByRole("button", { name: button, exact: true }).click();
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
     await page.getByRole("button", { name: close, exact: true }).click();

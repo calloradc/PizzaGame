@@ -115,20 +115,9 @@ export function createGame({ root, onChange }) {
     el,
   });
   function fitBoard() {
-    const r = $("mapMount").getBoundingClientRect?.();
-    if (!r?.width || !r.height) return;
-    const k = Math.min(r.width / 420, r.height / 450),
-      w = r.width / k,
-      h = r.height / k;
-    $("map").setAttribute("viewBox", `0 0 ${w} ${h}`);
-    $("world").setAttribute(
-      "transform",
-      `translate(${(w - 420) / 2} ${(h - 450) / 2})`,
-    );
-    for (const id of ["terrain", "rasterGround"]) {
-      $(id).setAttribute("width", w);
-      $(id).setAttribute("height", h);
-    }
+    // Keep a square world at every viewport size and zoom. Never stretch the original art.
+    $("map").setAttribute("viewBox", "0 0 450 450");
+    $("world").setAttribute("transform", "translate(15 0)");
   }
   function setupMap() {
     fitBoard();

@@ -8,14 +8,18 @@ const required = [
   "main.jsx",
   "App.jsx",
   "components.jsx",
-  ...["engine", "config", "effects", "audio", "art"].map(
+  "GameScene.jsx",
+  ...["engine", "config", "effects", "audio", "art", "camera"].map(
     (name) => `game/${name}.js`,
   ),
-  ...["game", "polish", "casual", "ultra"].map((name) => `styles/${name}.css`),
+  ...["game", "polish", "casual", "ultra", "mobile"].map(
+    (name) => `styles/${name}.css`,
+  ),
   ...[
     "towers-atlas.png",
     "enemies-atlas.png",
     "garden.png",
+    "garden-expanded.png",
     "icons-atlas.png",
     "ammo-atlas.png",
     "sprites.svg",
@@ -34,7 +38,7 @@ for (const file of fs.readdirSync(path.join(root, "game"))) {
   if (file.endsWith(".js"))
     execFileSync(process.execPath, ["--check", path.join(root, "game", file)]);
 }
-for (const name of ["game", "polish", "casual", "ultra"]) {
+for (const name of ["game", "polish", "casual", "ultra", "mobile"]) {
   const css = fs.readFileSync(path.join(root, `styles/${name}.css`), "utf8");
   for (const match of css.matchAll(/url\(['"]?([^\)'"#]+)['"]?\)/g)) {
     assert(
