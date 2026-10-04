@@ -78,7 +78,8 @@ test("language and sliders persist and every visible menu uses English", async (
 }) => {
   await lobby(page);
   await page.getByRole("button", { name: "Настройки", exact: true }).click();
-  await page.locator("#language").selectOption("en");
+  await page.locator("#language").click();
+  await page.getByRole("option", { name: /English/ }).click();
   await expect(
     page.getByRole("heading", { name: "Make it comfortable" }),
   ).toBeVisible();

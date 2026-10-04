@@ -21,6 +21,7 @@ import { towerPrices, abilityPrices, missions } from "./game/progression.js";
 import { translate } from "./game/i18n.js";
 import boardSvg from "./assets/board.svg?raw";
 import gardenUrl from "./assets/grass-tile.webp";
+import { mapThemes, mapScenery } from "./game/scenery.js";
 
 // Only this static SVG subtree is handed to the animation engine.
 const boardMarkup = boardSvg;
@@ -97,7 +98,44 @@ export function Coins({ amount, className = "" }) {
   );
 }
 
+function useAnimatedView(view, key) {
+  const previous = useRef(null);
+  const [present, setPresent] = useState(Boolean(view[key]));
+  const active = Boolean(view[key]);
+  if (active) previous.current = view;
+  useEffect(() => {
+    if (active) {
+      setPresent(true);
+      return;
+    }
+    const timer = setTimeout(() => setPresent(false), 190);
+    return () => clearTimeout(timer);
+  }, [active]);
+  return {
+    display: active ? view : present ? previous.current : null,
+    closing: !active,
+    onExited: () => {
+      if (!active) setPresent(false);
+    },
+  };
+}
+
 export function BuildSheet({ view, actions }) {
+  const { display, closing, onExited } = useAnimatedView(view, "selection");
+  const t = useT();
+  return display ? (
+    <BuildSheetContent
+      view={display}
+      actions={actions}
+      closing={closing}
+      onExited={onExited}
+    />
+  ) : (
+    <section className="sheet" aria-label={t("Меню строительства")} />
+  );
+}
+
+function BuildSheetContent({ view, actions, closing, onExited }) {
   const t = useT();
   const swipeStart = useRef(null);
   const selection = view.selection;
@@ -108,8 +146,13 @@ export function BuildSheet({ view, actions }) {
   const unlocked = view.meta.unlockedTowers.includes(type);
   return (
     <section
-      className="sheet open"
+      className={`sheet open ${closing ? "closing" : ""}`}
+      inert={closing}
+      aria-hidden={closing || undefined}
       aria-label={t("Меню строительства")}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === e.currentTarget) onExited();
+      }}
       onTouchStart={(e) => {
         swipeStart.current = e.target.closest(".handle,.sheethead")
           ? e.touches[0].clientY
@@ -150,11 +193,9 @@ export function BuildSheet({ view, actions }) {
                   }
                 >
                   <Icon id={`t-${r.id}`} />
-                  <strong>{t(r.name)}</strong>
                   {locked ? (
                     <span className="lock-label">
                       <Icon id="lock" />
-                      {t("Магазин")}
                     </span>
                   ) : (
                     <Coins amount={costs[i]} />
@@ -272,15 +313,140 @@ export function BuildSheet({ view, actions }) {
   );
 }
 
+export const MapPreview = memo(function MapPreview({ index, className = "" }) {
+  const map = maps[index],
+    theme = mapThemes[index];
+  return (
+    <svg
+      className={`map-preview ${className}`}
+      viewBox="0 0 450 450"
+      aria-hidden="true"
+      data-map={index}
+    >
+      <rect width="450" height="450" fill={theme.ground} />
+      <image
+        href={gardenUrl}
+        width="450"
+        height="450"
+        preserveAspectRatio="xMidYMid slice"
+        style={{ filter: theme.filter }}
+      />
+      <g transform="translate(15 0)">
+        <path
+          d={map.path}
+          fill="none"
+          stroke={theme.edge}
+          strokeWidth="38"
+          strokeLinecap="round"
+        />
+        <path
+          d={map.path}
+          fill="none"
+          stroke={theme.road}
+          strokeWidth="30"
+          strokeLinecap="round"
+        />
+        <path
+          d={map.path}
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity=".14"
+          strokeWidth="2"
+          strokeDasharray="2 12"
+        />
+        {mapScenery(index).map((prop, i) => (
+          <svg
+            key={i}
+            x={prop.x - prop.width / 2}
+            y={prop.y - prop.height / 2}
+            width={prop.width}
+            height={prop.height}
+            viewBox="0 0 64 64"
+          >
+            <Icon id={prop.id} />
+          </svg>
+        ))}
+        {map.pads.map(([x, y], i) => (
+          <g key={i} transform={`translate(${x} ${y})`}>
+            <circle
+              r="18"
+              fill={theme.pad}
+              stroke={theme.accent}
+              strokeWidth="2"
+            />
+            <path
+              d="M-5 0h10m-5-5v10"
+              stroke={theme.accent}
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </g>
+        ))}
+        <svg x="314" y="329" width="105" height="95" viewBox="0 0 64 64">
+          <Icon id="shop" />
+        </svg>
+        {index === 1 &&
+          [
+            [80, 35],
+            [320, 155],
+            [85, 350],
+          ].map(([x, y], i) => (
+            <g key={i} transform={`translate(${x} ${y})`}>
+              <circle r="21" fill="#ffcf79" opacity=".13" />
+              <circle r="9" fill="#ffcf79" opacity=".2" />
+              <circle r="3" fill="#ffe8aa" />
+            </g>
+          ))}
+        {index === 2 &&
+          [
+            [35, 35],
+            [300, 390],
+            [115, 240],
+          ].map(([x, y], i) => (
+            <g key={i} transform={`translate(${x} ${y})`}>
+              <ellipse rx="16" ry="9" fill="#ac9948" opacity=".28" />
+              <ellipse rx="9" ry="5" fill="#d9c16a" opacity=".6" />
+            </g>
+          ))}
+      </g>
+    </svg>
+  );
+});
+
+function RewardOffer({ view, actions, compact = false }) {
+  const t = useT();
+  return (
+    <button
+      className={`reward-offer ${compact ? "compact" : ""}`}
+      disabled={view.shopCooldown > 0}
+      aria-label={
+        view.shopCooldown > 0
+          ? t("Снова через {n} с", { n: view.shopCooldown })
+          : t("Забрать")
+      }
+      title={t("Подарок за просмотр")}
+      onClick={() => actions.watchAd("wallet")}
+    >
+      <Icon id="reward" />
+      <span className="ad-play">▶</span>
+      <Coins amount={80} />
+      {view.shopCooldown > 0 && <small>{view.shopCooldown}s</small>}
+    </button>
+  );
+}
+
 function Intro({ view, actions }) {
   const t = useT();
-  const mode = modes.find((m) => m.id === view.chosenMode) || modes[0];
   return (
-    <div className="lobby">
+    <div className="lobby game-lobby">
       <div className="lobby-top">
         <span className="brand">
           <Icon id="pizza" />
-          PIZZA<span>PATROL</span>
+          <span>
+            PIZZA
+            <br />
+            <b>PATROL</b>
+          </span>
         </span>
         <Coins amount={view.meta.wallet} className="wallet" />
         <button
@@ -292,124 +458,85 @@ function Intro({ view, actions }) {
         </button>
       </div>
       <div className="lobby-layout">
-        <aside className="lobby-hero">
-          <div className="hero-orbit">
-            <Icon id="pizza" className="hero-mascot" />
-            <Icon id="t-garlic" className="hero-tower one" />
-            <Icon id="t-chili" className="hero-tower two" />
-            <span className="hero-sticker">
-              TOWER
-              <br />
-              DEFENSE
-            </span>
+        <div className="map-stage">
+          <div className="map-stage-frame" key={view.chosenMap}>
+            <MapPreview index={view.chosenMap || 0} />
           </div>
-          <div className="eyebrow">PIZZA PATROL</div>
-          <h1>
-            {t("Горячая смена.")}
-            <br />
-            <em>{t("Вкусная оборона.")}</em>
-          </h1>
-          <p>{t("Собери команду рецептов и защити свою пиццерию.")}</p>
-          <div className="hero-record">
+          <div className="map-stage-title">
+            <Icon id="flag" />
+            <h1>{t(maps[view.chosenMap || 0].name)}</h1>
+          </div>
+          <span className="map-record" title={t("Рекорд")}>
             <Icon id="medal" />
-            <span>
-              {t("Рекорд")} <b>{view.meta.best}</b>
-            </span>
-            <span>
-              10 <small>{t("Башни")}</small>
-            </span>
-          </div>
-        </aside>
+            {view.meta.best}
+          </span>
+        </div>
         <div className="run-setup">
-          <div className="section-title">
-            <h2>{t("Новая смена")}</h2>
-            <span>01 — 03</span>
-          </div>
-          <div className="eyebrow">{t("КАРТА")}</div>
-          <div className="choices map-choices">
+          <div className="choices map-choices" aria-label={t("КАРТА")}>
             {maps.map((map, i) => (
               <button
                 key={map.name}
                 disabled={view.chosenMode === "daily" && i !== view.dailyMap}
                 className={`choice ${view.chosenMap === i ? "active" : ""}`}
                 onClick={() => actions.chooseMap(i)}
+                aria-label={t(map.name)}
+                title={t(map.name)}
                 aria-pressed={view.chosenMap === i}
               >
-                <svg
-                  className={`mapThumb map-${i}`}
-                  viewBox="0 0 450 450"
-                  aria-hidden="true"
-                >
-                  <image
-                    href={gardenUrl}
-                    width="450"
-                    height="450"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                  <path d={map.path} transform="translate(15 0)" />
-                  {map.pads.slice(0, 7).map(([x, y], j) => (
-                    <circle key={j} cx={x + 15} cy={y} r="11" />
-                  ))}
-                </svg>
-                <span className="map-index">0{i + 1}</span>
-                <b>{t(map.name)}</b>
-                <small>{t(map.note)}</small>
+                <MapPreview index={i} />
                 <span className="selection-check" aria-hidden="true">
                   ✓
                 </span>
               </button>
             ))}
           </div>
-          <div className="eyebrow">{t("СЛОЖНОСТЬ")}</div>
-          <div className="choices difficulty-choices">
-            {[
-              ["Уютно", "Учимся и отдыхаем", "◉"],
-              ["Классика", "Баланс и тактика", "◉◉"],
-              ["Остро", "Проверка мастерства", "◉◉◉"],
-            ].map(([label, note, dots], i) => (
+          <div
+            className="choices difficulty-choices"
+            aria-label={t("СЛОЖНОСТЬ")}
+          >
+            {["Уютно", "Классика", "Остро"].map((label, i) => (
               <button
                 key={label}
                 disabled={view.chosenMode === "daily" && i !== 1}
                 className={`choice ${view.chosenDiff === i ? "active" : ""}`}
                 onClick={() => actions.chooseDiff(i)}
                 aria-pressed={view.chosenDiff === i}
+                aria-label={t(label)}
               >
-                <span className="difficulty-dots">{dots}</span>
+                <span className="difficulty-flames">
+                  {Array.from({ length: i + 1 }, (_, j) => (
+                    <Icon key={j} id="chili" />
+                  ))}
+                </span>
                 <b>{t(label)}</b>
-                <small>{t(note)}</small>
               </button>
             ))}
           </div>
-          <div className="eyebrow">{t("РЕЖИМ")}</div>
-          <div className="mode-choices">
+          <div className="mode-choices" aria-label={t("РЕЖИМ")}>
             {modes.map((m) => (
               <button
                 key={m.id}
                 className={`mode-choice ${view.chosenMode === m.id ? "active" : ""}`}
                 onClick={() => actions.chooseMode(m.id)}
                 aria-pressed={view.chosenMode === m.id}
+                title={t(m.desc)}
               >
                 <Icon id={m.icon} />
-                <div>
-                  <b>{t(m.name)}</b>
-                  <small>{t(m.note)}</small>
-                </div>
-                <span className="selection-check">✓</span>
+                <b>{t(m.name)}</b>
               </button>
             ))}
           </div>
-          <p className="mode-description">{t(mode.desc)}</p>
           <button
             className="primary play-cta"
             aria-label={t("Открыть кухню")}
             onClick={actions.newGame}
           >
             <Icon id="i-play" />
-            {t("Открыть кухню")}
-            <span>→</span>
+            {t("Играть")}
           </button>
           {view.resume && (
             <button className="resume-button" onClick={actions.resumeSave}>
+              <Icon id="i-play" />
               {view.resume.finished
                 ? t("Результаты забега")
                 : t("Продолжить · {map} · {n} волна", {
@@ -427,124 +554,243 @@ function Intro({ view, actions }) {
       </div>
       <nav className="lobby-nav">
         {[
-          ["shop", "reward", "Магазин"],
+          ["shop", "t-chili", "Магазин"],
           ["medals", "medal", "Задания"],
           ["help", "i-intel", "Помощь"],
         ].map(([id, icon, label]) => (
           <button
             key={id}
             aria-label={t(label)}
+            title={t(label)}
             onClick={() => actions.showModal(id)}
           >
             <Icon id={icon} />
-            {t(label)}
-            <span aria-hidden="true">↗</span>
           </button>
         ))}
+        <RewardOffer view={view} actions={actions} compact />
       </nav>
-      <div className="lobby-footer">
-        PIZZA PATROL <span>v2.0 · {t("Твоя кухня. Твои правила.")}</span>
-      </div>
     </div>
   );
 }
 
 function Shop({ view, actions }) {
   const t = useT();
-  const [tab, setTab] = useState("tower");
+  const [tab, setTab] = useState("tower"),
+    [selected, setSelected] = useState(() =>
+      Math.max(
+        0,
+        recipes.findIndex((_, i) => !view.meta.unlockedTowers.includes(i)),
+      ),
+    );
   const items = tab === "tower" ? recipes : abilities;
+  const item = items[selected] || items[0],
+    id = tab === "tower" ? selected : item.id;
+  const owned = (
+    tab === "tower" ? view.meta.unlockedTowers : view.meta.unlockedAbilities
+  ).includes(id);
+  const descriptions = {
+    bomb: "Взрыв соуса по области",
+    freeze: "Замедление всех врагов",
+    trap: "Яд и замедление на дороге",
+    rally: "Скорость атаки +70% на 7 с",
+    repair: "Восстановление 5 жизней за 80",
+    pulse: "Снимает щиты и оглушает врагов",
+    supply: "Добавляет ресурсы во время боя",
+  };
   return (
     <>
       <div className="modal-heading">
-        <div>
-          <div className="eyebrow">{t("Коллекция шефа")}</div>
-          <h2>{t("Открывай новые тактики")}</h2>
-        </div>
+        <h2>{t("Магазин")}</h2>
         <Coins amount={view.meta.wallet} className="wallet" />
       </div>
-      <p>{t("Рецепты остаются с тобой во всех забегах.")}</p>
       <div className="shop-tabs">
         <button
           className={tab === "tower" ? "active" : ""}
-          onClick={() => setTab("tower")}
+          onClick={() => {
+            setTab("tower");
+            setSelected(
+              Math.max(
+                0,
+                recipes.findIndex(
+                  (_, i) => !view.meta.unlockedTowers.includes(i),
+                ),
+              ),
+            );
+          }}
         >
-          {t("Башни")} {view.meta.unlockedTowers.length}/10
+          <Icon id="t-pepper" />
+          {t("Башни")} <small>{view.meta.unlockedTowers.length}/10</small>
         </button>
         <button
           className={tab === "ability" ? "active" : ""}
-          onClick={() => setTab("ability")}
+          onClick={() => {
+            setTab("ability");
+            setSelected(
+              Math.max(
+                0,
+                abilities.findIndex(
+                  (a) => !view.meta.unlockedAbilities.includes(a.id),
+                ),
+              ),
+            );
+          }}
         >
-          {t("Способности")} {view.meta.unlockedAbilities.length}/7
+          <Icon id="pulse" />
+          {t("Способности")}{" "}
+          <small>{view.meta.unlockedAbilities.length}/7</small>
         </button>
       </div>
-      <div className="collection">
-        {items.map((item, i) => {
-          const id = tab === "tower" ? i : item.id;
-          const owned = (
+      <div className="collection" key={tab}>
+        {items.map((r, i) => {
+          const itemId = tab === "tower" ? i : r.id;
+          const isOwned = (
             tab === "tower"
               ? view.meta.unlockedTowers
               : view.meta.unlockedAbilities
-          ).includes(id);
-          const price =
-            tab === "tower" ? towerPrices[i] : abilityPrices[item.id];
-          const desc =
-            tab === "tower"
-              ? item.desc
-              : {
-                  bomb: "Взрыв соуса по области",
-                  freeze: "Замедление всех врагов",
-                  trap: "Яд и замедление на дороге",
-                  rally: "Скорость атаки +70% на 7 с",
-                  repair: "Восстановление 5 жизней за 80",
-                  pulse: "Снимает щиты и оглушает врагов",
-                  supply: "Добавляет ресурсы во время боя",
-                }[item.id];
+          ).includes(itemId);
+          const price = tab === "tower" ? towerPrices[i] : abilityPrices[r.id];
           return (
             <article
-              key={item.id}
-              className={`collection-card ${owned ? "owned" : ""}`}
+              key={r.id}
+              className={`collection-card ${isOwned ? "owned" : ""} ${selected === i ? "selected" : ""}`}
+              onPointerEnter={() => setSelected(i)}
+              onFocus={() => setSelected(i)}
             >
-              <div className="collection-art">
-                <Icon id={tab === "tower" ? `t-${item.id}` : item.icon} />
-                {!owned && <Icon id="lock" className="collection-lock" />}
-              </div>
-              <div className="collection-info">
-                <small>{t(tab === "tower" ? item.role : "Способности")}</small>
-                <h3>{t(item.name)}</h3>
-                <p>{t(desc)}</p>
-              </div>
               <button
-                disabled={owned || view.meta.wallet < price}
-                className={owned ? "owned-label" : "buy-button"}
-                onClick={() => actions.buy(tab, id)}
-                aria-label={`${t("Открыть")} ${t(item.name)}`}
+                className="collection-select"
+                aria-label={t(r.name)}
+                onClick={() => setSelected(i)}
               >
-                {owned ? <>✓ {t("Открыто")}</> : <Coins amount={price} />}
+                <Icon id={tab === "tower" ? `t-${r.id}` : r.icon} />
+                {!isOwned && <Icon id="lock" className="collection-lock" />}
+              </button>
+              <button
+                disabled={isOwned || view.meta.wallet < price}
+                className={isOwned ? "owned-label" : "buy-button"}
+                onClick={() => actions.buy(tab, itemId)}
+                aria-label={`${t("Открыть")} ${t(r.name)}`}
+              >
+                {isOwned ? (
+                  <span aria-hidden="true">✓</span>
+                ) : (
+                  <Coins amount={price} />
+                )}
               </button>
             </article>
           );
         })}
       </div>
-      <div className="ad-offer">
-        <Icon id="reward" />
-        <div>
-          <b>{t("Подарок за просмотр")}</b>
-          <small>{t("Демо-реклама")} · +80</small>
-        </div>
+      <div className="collection-detail" aria-live="polite">
+        <b>{t(item.name)}</b>
+        <span>{t(tab === "tower" ? item.desc : descriptions[item.id])}</span>
+      </div>
+      <div className="shop-rewards">
+        <RewardOffer view={view} actions={actions} />
         <button
-          disabled={view.shopCooldown > 0}
-          onClick={() => actions.watchAd("wallet")}
+          className="reward-offer unlock-offer"
+          disabled={owned || view.unlockCooldown > 0}
+          onClick={() => actions.watchAd("unlock", { kind: tab, id })}
+          aria-label={t("Открыть за просмотр")}
+          title={t("Открыть за просмотр")}
         >
-          {view.shopCooldown > 0
-            ? t("Снова через {n} с", { n: view.shopCooldown })
-            : t("Забрать")}
+          <Icon id={tab === "tower" ? `t-${item.id}` : item.icon} />
+          <span className="ad-play">▶</span>
+          <Icon id="lock" />
+          {view.unlockCooldown > 0 && <small>{view.unlockCooldown}s</small>}
         </button>
       </div>
-      <p className="subtle-note">{t("Получай награды за волны и задания.")}</p>
       <button className="secondary" onClick={actions.back}>
         {t("Назад")}
       </button>
     </>
+  );
+}
+
+function LanguagePicker({ language, actions }) {
+  const t = useT(),
+    [open, setOpen] = useState(false),
+    root = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (!root.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+  return (
+    <div
+      className="setting language-setting"
+      ref={root}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(false);
+          root.current.querySelector("#language").focus();
+        }
+      }}
+    >
+      <span id="language-label">{t("Язык")}</span>
+      <div className="language-picker">
+        <button
+          id="language"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-labelledby="language-label language"
+          onClick={() => setOpen(!open)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setOpen(true);
+              requestAnimationFrame(() =>
+                root.current.querySelector("[role=option]")?.focus(),
+              );
+            }
+          }}
+        >
+          <span className="language-code">{language.toUpperCase()}</span>
+          {language === "en" ? "English" : "Русский"}
+          <span className={`chevron ${open ? "up" : ""}`}>⌄</span>
+        </button>
+        {open && (
+          <div
+            className="language-options"
+            role="listbox"
+            aria-labelledby="language-label"
+          >
+            {[
+              ["ru", "Русский"],
+              ["en", "English"],
+            ].map(([code, label], i) => (
+              <button
+                key={code}
+                role="option"
+                aria-selected={language === code}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    root.current
+                      .querySelectorAll("[role=option]")
+                      [(i + 1) % 2].focus();
+                  }
+                }}
+                onClick={() => {
+                  actions.setPreference("language", code);
+                  setOpen(false);
+                  root.current.querySelector("#language").focus();
+                }}
+              >
+                <span className="language-code">{code.toUpperCase()}</span>
+                {label}
+                <span>{language === code ? "✓" : ""}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -554,17 +800,7 @@ function Settings({ view, actions }) {
     <>
       <div className="eyebrow">{t("Настройки")}</div>
       <h2>{t("Комфортная игра")}</h2>
-      <div className="setting language-setting">
-        <label htmlFor="language">{t("Язык")}</label>
-        <select
-          id="language"
-          value={view.prefs.language}
-          onChange={(e) => actions.setPreference("language", e.target.value)}
-        >
-          <option value="ru">Русский</option>
-          <option value="en">English</option>
-        </select>
-      </div>
+      <LanguagePicker language={view.prefs.language} actions={actions} />
       <div className="setting">
         {t("Звуки кухни")}
         <button
@@ -596,13 +832,7 @@ function Settings({ view, actions }) {
           />
         </div>
       ))}
-      <p className="subtle-note">
-        {t("Автоматически уменьшаем эффекты в больших боях.")}
-      </p>
-      {[
-        ["haptic", "Вибрация"],
-        ["auto", "Автостарт через 5 с"],
-      ].map(([key, label]) => (
+      {[["auto", "Автостарт через 5 с"]].map(([key, label]) => (
         <div className="setting" key={key}>
           {t(label)}
           <button
@@ -718,6 +948,8 @@ function Help({ actions }) {
 }
 
 export function GameModal({ view, actions }) {
+  const { display, closing, onExited } = useAnimatedView(view, "modal");
+  view = display || view;
   const t = useT();
   const modalRef = useRef(null);
   useEffect(() => {
@@ -726,6 +958,12 @@ export function GameModal({ view, actions }) {
     const node = modalRef.current;
     node?.focus({ preventScroll: true });
     const handle = (e) => {
+      // Let the language picker consume Escape before the dialog itself closes.
+      if (
+        e.key === "Escape" &&
+        node.querySelector('.language-picker [aria-expanded="true"]')
+      )
+        return;
       if (
         e.key === "Escape" &&
         !["intro", "perks", "finish"].includes(view.modal)
@@ -786,7 +1024,6 @@ export function GameModal({ view, actions }) {
         <>
           <Icon id="pizza" className="hero" />
           <h2>{t("Смена на паузе")}</h2>
-          <p>{t("Волны, враги, атаки и перезарядка остановлены.")}</p>
           <button className="primary" onClick={actions.continueGame}>
             {t("Продолжить")}
           </button>
@@ -804,28 +1041,25 @@ export function GameModal({ view, actions }) {
         <>
           <div className="eyebrow">{t("Секретный рецепт")}</div>
           <h2>{t("Добавим изюминку?")}</h2>
-          <p>
-            {t(
-              "Выбери один бонус до конца забега. Бонусы одного вида складываются.",
-            )}
-          </p>
-          {view.perkChoices.map((id) => {
-            const p = perks.find((p) => p.id === id);
-            return (
-              <button
-                className="perk"
-                key={id}
-                onClick={() => actions.choosePerk(id)}
-              >
-                <Icon id={p.icon} />
-                <div>
-                  <b>{t(p.name)}</b>
-                  <small>{t(p.desc)}</small>
-                </div>
-                <span>→</span>
-              </button>
-            );
-          })}
+          <div className="perk-grid">
+            {view.perkChoices.map((id) => {
+              const p = perks.find((p) => p.id === id);
+              return (
+                <button
+                  className="perk"
+                  key={id}
+                  onClick={() => actions.choosePerk(id)}
+                >
+                  <Icon id={p.icon} />
+                  <div>
+                    <b>{t(p.name)}</b>
+                    <small>{t(p.desc)}</small>
+                  </div>
+                  <span>→</span>
+                </button>
+              );
+            })}
+          </div>
         </>
       );
       break;
@@ -928,11 +1162,42 @@ export function GameModal({ view, actions }) {
           <div className="demo-label">{t("Демо-реклама")}</div>
           <Icon id="reward" className="ad-gift" />
           <h2>{t("Подарок от кухни")}</h2>
-          <p>
-            {t("Это имитация рекламного ролика.")}
-            <br />
-            {t("Награда будет доступна после завершения таймера.")}
-          </p>
+          <div className="ad-reward-preview">
+            {view.ad.kind === "unlock" ? (
+              <>
+                <Icon
+                  id={
+                    view.ad.item.kind === "tower"
+                      ? `t-${recipes[view.ad.item.id].id}`
+                      : abilities.find((a) => a.id === view.ad.item.id).icon
+                  }
+                />
+                ✓
+              </>
+            ) : view.ad.kind === "wallet" || view.ad.kind === "supply" ? (
+              <>
+                +<Coins amount={view.ad.kind === "wallet" ? 80 : 100} />
+              </>
+            ) : view.ad.kind === "repair" || view.ad.kind === "revive" ? (
+              <>
+                <Icon id="heart" />+{view.ad.kind === "repair" ? 5 : 8}
+              </>
+            ) : view.ad.kind === "double" ? (
+              <>
+                <Icon id="coin" />
+                ×2
+              </>
+            ) : (
+              <>
+                <Icon id="blizzard" />↻
+              </>
+            )}
+          </div>
+          <div className="ad-spot">
+            <Icon id="t-pepper" />
+            <Icon id="t-chili" />
+            <Icon id="t-truffle" />
+          </div>
           <div className="ad-countdown" aria-live="polite">
             {view.ad.remaining ? t("{n} с", { n: view.ad.remaining }) : "✓"}
           </div>
@@ -957,9 +1222,20 @@ export function GameModal({ view, actions }) {
   }
   return (
     <div
-      className={`overlay open release-overlay ${view.modal === "intro" ? "lobby-overlay" : ""}`}
+      className={`overlay open release-overlay ${closing ? "closing" : ""} ${view.modal === "intro" ? "lobby-overlay" : ""}`}
+      inert={closing}
+      aria-hidden={closing || undefined}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === e.currentTarget) onExited();
+      }}
     >
+      {view.fromLobby && view.modal !== "intro" && (
+        <div className="lobby-dialog-backdrop" aria-hidden="true">
+          <MapPreview index={view.chosenMap || 0} />
+        </div>
+      )}
       <div
+        key={view.modal}
         ref={modalRef}
         tabIndex={-1}
         className={`modal ${view.modal === "intro" ? "lobby-modal" : ""} ${view.modal === "shop" ? "shop-modal" : ""}`}

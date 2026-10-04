@@ -83,6 +83,7 @@ export function migrateProgress(meta, checkpoint) {
     claimed: Array.isArray(meta.claimed) ? meta.claimed : [],
     records: meta.records || {},
     adReadyAt: Number(meta.adReadyAt) || 0,
+    unlockReadyAt: Number(meta.unlockReadyAt) || 0,
     dailyClaimed: Number(meta.dailyClaimed) || 0,
   };
 }

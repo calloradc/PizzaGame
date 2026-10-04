@@ -19,10 +19,17 @@ const required = [
     "targeting",
     "progression",
     "i18n",
+    "scenery",
   ].map((name) => `game/${name}.js`),
-  ...["game", "polish", "casual", "ultra", "mobile", "release"].map(
-    (name) => `styles/${name}.css`,
-  ),
+  ...[
+    "game",
+    "polish",
+    "casual",
+    "ultra",
+    "mobile",
+    "release",
+    "game-menu",
+  ].map((name) => `styles/${name}.css`),
   ...[
     "towers-atlas.webp",
     "enemies-atlas.webp",
@@ -48,7 +55,15 @@ for (const file of fs.readdirSync(path.join(root, "game"))) {
   if (file.endsWith(".js"))
     execFileSync(process.execPath, ["--check", path.join(root, "game", file)]);
 }
-for (const name of ["game", "polish", "casual", "ultra", "mobile", "release"]) {
+for (const name of [
+  "game",
+  "polish",
+  "casual",
+  "ultra",
+  "mobile",
+  "release",
+  "game-menu",
+]) {
   const css = fs.readFileSync(path.join(root, `styles/${name}.css`), "utf8");
   for (const match of css.matchAll(/url\(['"]?([^\)'"#]+)['"]?\)/g)) {
     assert(

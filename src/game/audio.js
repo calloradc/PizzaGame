@@ -3,9 +3,6 @@ let ctx;
 export function configureAudio(p) {
   prefs = p;
 }
-export function haptic(pattern) {
-  if (prefs.haptic && navigator.vibrate) navigator.vibrate(pattern);
-}
 export function sound(freq, time, delay = 0) {
   if (!prefs.sound || prefs.volume === 0) return;
   try {

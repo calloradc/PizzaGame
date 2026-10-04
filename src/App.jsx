@@ -10,7 +10,6 @@ import {
 } from "./components.jsx";
 import { prepareRasterImages } from "./game/art.js";
 import { createGame } from "./game/engine.js";
-import { haptic } from "./game/audio.js";
 import { translate } from "./game/i18n.js";
 import { abilities, events, maps } from "./game/config.js";
 import { GameScene } from "./GameScene.jsx";
@@ -42,6 +41,7 @@ export default function App() {
     [status, setStatus] = useState("loading");
   const [gameMenu, setGameMenu] = useState(false),
     [moreAbilities, setMoreAbilities] = useState(false);
+  const [rewardsOpen, setRewardsOpen] = useState(false);
   const presses = useRef(new Map()),
     lastActivation = useRef(new WeakMap());
   const actions = useRef(
@@ -79,6 +79,7 @@ export default function App() {
     if (view.modal) {
       setGameMenu(false);
       setMoreAbilities(false);
+      setRewardsOpen(false);
     }
     return () => document.body.classList.remove("gamePaused");
   }, [view.modal]);
@@ -97,6 +98,7 @@ export default function App() {
         key={ability.id}
         className={`ability ${active ? "active" : ""} ${locked ? "locked" : ""}`}
         aria-label={t(ability.name)}
+        title={t(ability.name)}
         disabled={
           !locked &&
           (view.over ||
@@ -112,18 +114,15 @@ export default function App() {
         }}
       >
         <Icon id={ability.icon} />
-        <strong>{t(ability.name)}</strong>
-        <small>
-          {locked ? (
-            <Icon id="lock" />
-          ) : cooldown > 0 ? (
-            t("{n} с", { n: Math.ceil(cooldown) })
-          ) : ability.id === "repair" ? (
+        {locked ? (
+          <Icon id="lock" className="ability-badge" />
+        ) : cooldown > 0 ? (
+          <small>{Math.ceil(cooldown)}</small>
+        ) : ability.id === "repair" ? (
+          <small>
             <Coins amount={80} />
-          ) : (
-            t(view.aim === ability.id ? "На карту" : "Готово!")
-          )}
-        </small>
+          </small>
+        ) : null}
         <i style={{ width: `${(cooldown / ability.cool) * 100}%` }} />
       </button>
     );
@@ -185,12 +184,11 @@ export default function App() {
             presses.current.clear();
             if (gameMenu && !e.target.closest(".bottomnav,.menu-trigger"))
               setGameMenu(false);
-            if (button && !button.disabled) haptic(8);
           }}
         >
           <main
             inert={Boolean(view.modal) || status !== "ready"}
-            className={`app mobile-game release-game ${view.diff === 0 ? "casual" : ""} ${view.modal ? "modal-active" : ""} ${view.modal === "intro" ? "in-lobby" : ""}`}
+            className={`app mobile-game release-game ${view.diff === 0 ? "casual" : ""} ${view.modal ? "modal-active" : ""} ${view.fromLobby ? "in-lobby" : ""}`}
           >
             <header className="top">
               <button
@@ -331,12 +329,6 @@ export default function App() {
                 !view.banner && (
                   <div className="screenhint">
                     {t("Коснись плюса — поставим башню")}
-                    <small className="touch-help">
-                      {t("Двигай поле пальцем · масштабируй двумя")}
-                    </small>
-                    <small className="mouse-help">
-                      {t("Мышь и колесо · пробел — пауза")}
-                    </small>
                   </div>
                 )}
             </div>
@@ -357,24 +349,25 @@ export default function App() {
                   onClick={() => setMoreAbilities(!moreAbilities)}
                 >
                   <span>{moreAbilities ? "×" : "•••"}</span>
-                  <strong>{t("Ещё")}</strong>
                 </button>
               </div>
               <div className="dockactions">
                 <button
                   id="buildMode"
+                  aria-label={t("Строить")}
+                  title={t("Строить")}
                   className={view.buildHighlight ? "buildModeOn" : ""}
                   onClick={actions.buildMode}
                 >
                   <Icon id="i-build" />
-                  {t("Строить")}
                 </button>
                 <button
                   id="intelBtn"
+                  aria-label={t("Разведка")}
+                  title={t("Разведка")}
                   onClick={() => actions.showModal("intel")}
                 >
                   <Icon id="i-intel" />
-                  {t("Разведка")}
                 </button>
                 <button
                   className="wavebtn"
@@ -435,6 +428,60 @@ export default function App() {
                 <span>{t("Главное меню")}</span>
               </button>
             </nav>
+            <div className={`battle-rewards ${rewardsOpen ? "expanded" : ""}`}>
+              {rewardsOpen && (
+                <div className="battle-reward-options">
+                  {[
+                    [
+                      "supply",
+                      "coin",
+                      "+100",
+                      view.running || view.adSupplyWave === view.wave,
+                      "Поставка +100",
+                    ],
+                    [
+                      "repair",
+                      "heart",
+                      "+5",
+                      view.lives >= view.maxLives ||
+                        view.adRepairWave === view.wave,
+                      "Пополнить жизни",
+                    ],
+                    [
+                      "recharge",
+                      "blizzard",
+                      "↻",
+                      !abilities.some(
+                        (a) =>
+                          view.meta.unlockedAbilities.includes(a.id) &&
+                          view.cool[a.id] > 0,
+                      ) || view.adRechargeWave === view.wave,
+                      "Перезарядить силы",
+                    ],
+                  ].map(([kind, icon, label, disabled, title]) => (
+                    <button
+                      key={kind}
+                      disabled={disabled || view.over || view.paused}
+                      aria-label={t(title)}
+                      onClick={() => actions.watchAd(kind)}
+                    >
+                      <Icon id={icon} />
+                      <b>{label}</b>
+                      <span className="ad-play">▶</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                className="gift-trigger"
+                aria-label={t("Подарки")}
+                aria-expanded={rewardsOpen}
+                onClick={() => setRewardsOpen(!rewardsOpen)}
+              >
+                <Icon id="reward" />
+                <span className="ad-play">▶</span>
+              </button>
+            </div>
             <BuildSheet view={view} actions={actions} />
           </main>
           <GameModal view={view} actions={actions} />

@@ -1,6 +1,7 @@
 import { memo, useLayoutEffect, useRef } from "react";
 import { Board } from "./components.jsx";
 import { createCamera } from "./game/camera.js";
+import { mapThemes } from "./game/scenery.js";
 import grassUrl from "./assets/grass-tile.webp";
 
 export const GameScene = memo(function GameScene({
@@ -28,12 +29,16 @@ export const GameScene = memo(function GameScene({
     <div
       id="mapwrap"
       ref={viewport}
-      className={`mapwrap scene-viewport ${map === 1 ? "night" : ""}`}
+      className={`mapwrap scene-viewport map-theme-${map}`}
+      style={{ "--map-ground": mapThemes[map].ground }}
     >
       <div className="camera-world">
         <div
           className="world-ground"
-          style={{ backgroundImage: `url(${grassUrl})` }}
+          style={{
+            backgroundImage: `url(${grassUrl})`,
+            filter: mapThemes[map].filter,
+          }}
         />
         <Board />
       </div>

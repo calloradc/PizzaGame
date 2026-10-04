@@ -1,0 +1,1255 @@
+/* A game lobby built around the actual battlefield, with compact selections. */
+.release-overlay.lobby-overlay {
+  background: #223b31;
+}
+.release-overlay .lobby-modal {
+  background: radial-gradient(ellipse at 50% 5%, #476a48, #283f35 75%);
+  overflow: auto;
+}
+.game-lobby {
+  width: min(70rem, 100%);
+  min-height: 100dvh;
+  max-width: none;
+  padding: max(0.8rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(0.8rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  gap: 1.2rem;
+  justify-content: center;
+  color: #fff3d1;
+}
+.game-lobby .lobby-top {
+  border: 0;
+  padding: 0;
+  gap: 0.7rem;
+  width: 100%;
+}
+.game-lobby .brand {
+  color: #fff3cf;
+  font-size: 1.35rem;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  text-shadow: 0 3px 0 #19352a;
+}
+.game-lobby .brand > svg {
+  width: 3.7rem;
+  height: 3.7rem;
+}
+.game-lobby .brand > span {
+  display: block;
+  color: #fff4d5;
+}
+.game-lobby .brand b {
+  color: #ffbe65;
+  font-size: 1.55rem;
+}
+.game-lobby .wallet {
+  margin-left: auto;
+  border: 2px solid #cbb16e;
+  background: #fff1c8;
+  box-shadow: 0 3px 0 #182f27;
+}
+.game-lobby .iconbtn {
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0.45rem;
+  border: 2px solid #72906a;
+  background: #54724c;
+  border-radius: 0.9rem;
+  box-shadow: 0 3px 0 #162e25;
+}
+.game-lobby .lobby-layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  align-items: center;
+  gap: 2rem;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.map-stage {
+  position: relative;
+  padding: 1rem;
+}
+.map-stage-frame {
+  width: min(100%, 57dvh);
+  margin: auto;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 0.45rem solid #f3d694;
+  box-shadow:
+    0 0.5rem 0 #897243,
+    0 1.3rem 2.5rem #102f2a66;
+  transform: rotate(-2deg);
+  animation: map-reveal 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.map-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.map-stage-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  position: relative;
+  margin: 1.5rem 0 0;
+}
+.map-stage-title > svg {
+  width: 2rem;
+  height: 2rem;
+}
+.map-stage h1 {
+  font-size: 1.35rem;
+  line-height: 1.15;
+  color: #fff2c7;
+  margin: 0;
+  letter-spacing: -0.035em;
+  text-shadow: 0 2px #142f26;
+}
+.map-record {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.1rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #46644a;
+  border: 2px solid #86a16b;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #19382a;
+}
+.map-record svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.game-lobby .run-setup {
+  padding: 1rem;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  width: 100%;
+}
+.game-lobby .choices {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.game-lobby .choice,
+.game-lobby .mode-choice {
+  border: 2px solid #78966c;
+  background: #4a6847;
+  color: #d6e0bf;
+  box-shadow: 0 4px 0 #1a3429;
+  transition:
+    transform 0.18s,
+    background 0.18s,
+    border-color 0.18s;
+}
+.game-lobby .choice.active,
+.game-lobby .mode-choice.active {
+  background: #fff0be;
+  border-color: #ffd27b;
+  color: #5e542e;
+  box-shadow:
+    0 4px 0 #aa873d,
+    0 0 0 3px #ffd77615;
+}
+.game-lobby .map-choices .choice {
+  padding: 0;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 1.18;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  position: relative;
+}
+.game-lobby .map-choices .choice .map-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.game-lobby .map-choices .choice.active {
+  border-width: 3px;
+}
+.game-lobby .selection-check {
+  position: absolute;
+  bottom: 0.2rem;
+  right: 0.2rem;
+  top: auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 0.7rem;
+  border-radius: 50%;
+  background: #ffe097;
+  color: #5d6e34;
+  box-shadow: 0 1px 2px #23492755;
+}
+.game-lobby .difficulty-choices .choice {
+  min-height: 3.5rem;
+  padding: 0.45rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  border-radius: 0.75rem;
+}
+.difficulty-flames {
+  display: flex;
+  height: 1.25rem;
+  justify-content: center;
+  align-items: center;
+}
+.difficulty-flames > svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0 -0.12rem;
+}
+.game-lobby .difficulty-choices b {
+  font-size: 0.73rem;
+}
+.game-lobby .mode-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0 0 1.4rem;
+}
+.game-lobby .mode-choice {
+  min-width: 0;
+  min-height: 4.4rem;
+  padding: 0.4rem 0.15rem;
+  border-radius: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  justify-content: center;
+}
+.game-lobby .mode-choice > svg {
+  width: 2rem;
+  height: 2rem;
+}
+.game-lobby .mode-choice b {
+  font-size: 0.62rem;
+  line-height: 1.15;
+  white-space: normal;
+}
+.game-lobby .play-cta {
+  min-height: 3.7rem;
+  width: 100%;
+  font-size: 1.35rem;
+  border-radius: 1rem;
+  gap: 0.5rem;
+  margin: 0;
+  background: linear-gradient(#f58646, #eb6633);
+  box-shadow:
+    0 5px 0 #a74224,
+    inset 0 2px 0 #ffb665;
+  border: 2px solid #ffb16a;
+  text-shadow: 0 2px #a3452a;
+  animation: play-breathe 3.5s ease-in-out infinite;
+}
+.game-lobby .play-cta > svg {
+  width: 2rem;
+  height: 2rem;
+}
+.game-lobby .resume-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  min-height: 2rem;
+  width: 100%;
+  margin-top: 0.65rem;
+  color: #d9e7bd;
+  border: 0;
+  background: #37563d;
+  border-radius: 0.7rem;
+}
+.game-lobby .resume-button > svg {
+  width: 1rem;
+  height: 1rem;
+}
+.game-lobby .lobby-nav {
+  display: flex;
+  padding: 0;
+  border: 0;
+  width: 100%;
+  justify-content: center;
+  gap: 0.8rem;
+  margin: 0;
+}
+.game-lobby .lobby-nav > button {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.9rem;
+  height: 3.9rem;
+  min-height: 0;
+  padding: 0.45rem;
+  background: #4b6847;
+  border: 2px solid #839a67;
+  border-radius: 1rem;
+  box-shadow: 0 4px 0 #172f25;
+}
+.game-lobby .lobby-nav > button > svg {
+  width: 2.8rem;
+  height: 2.8rem;
+}
+.game-lobby .lobby-nav > .reward-offer {
+  width: 7.5rem;
+  background: #ffedb0;
+  border-color: #edc46e;
+  color: #8a6326;
+}
+.reward-offer {
+  position: relative;
+  min-height: 3.2rem;
+  border: 2px solid #ddc16f;
+  border-radius: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: #fff0ba;
+  color: #8b6326;
+  box-shadow: 0 3px 0 #b89449;
+}
+.reward-offer > svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.ad-play {
+  position: absolute;
+  right: -0.25rem;
+  top: -0.3rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.2rem;
+  height: 1.1rem;
+  padding: 0.1rem 0.25rem;
+  background: #e76e3c;
+  border: 1px solid #ffcb8d;
+  border-radius: 0.35rem;
+  color: #fff6d6;
+  font-size: 0.65rem;
+  line-height: 1;
+  box-shadow: 0 2px 0 #ac4525;
+}
+.reward-offer > small {
+  position: absolute;
+  bottom: 0.15rem;
+  right: 0.35rem;
+  font-size: 0.55rem;
+}
+/* Collection and build choices remain visible in a grid. One description per selection. */
+.release-overlay .shop-modal {
+  max-width: 42rem;
+}
+.shop-tabs {
+  margin: 0.7rem 0 1rem;
+}
+.shop-tabs > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.45rem;
+  font-size: 0.8rem;
+}
+.shop-tabs > button > svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+.shop-tabs small {
+  opacity: 0.6;
+  font-size: 0.6rem;
+}
+.shop-modal .collection {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.shop-modal .collection-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  min-width: 0;
+  background: #eee8d1;
+  border: 2px solid #dadbb6;
+  border-radius: 0.85rem;
+  animation: tile-pop 0.25s both;
+}
+.shop-modal .collection-card.selected {
+  border-color: #729155;
+  background: #e4edce;
+}
+.shop-modal .collection-card > .collection-select {
+  position: relative;
+  padding: 0.2rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0.6rem;
+  width: 100%;
+  height: 4rem;
+  box-shadow: none;
+  display: grid;
+  place-items: center;
+}
+.collection-select > svg {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+.collection-select > .collection-lock {
+  position: absolute;
+  width: 1.15rem;
+  height: 1.15rem;
+  right: 0.1rem;
+  bottom: 0.1rem;
+}
+.shop-modal .collection-card > .buy-button,
+.shop-modal .collection-card > .owned-label {
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0.55rem;
+  min-height: 1.7rem;
+  font-size: 0.72rem;
+  width: 100%;
+  height: auto;
+}
+.shop-modal .collection-card > .owned-label {
+  background: #dce6c8;
+  color: #688d4a;
+  opacity: 1;
+}
+.collection-card .currency > svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+.collection-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.85rem 0;
+  min-height: 3.4rem;
+}
+.collection-detail b {
+  font-size: 0.9rem;
+  color: #456441;
+}
+.collection-detail span {
+  font-size: 0.7rem;
+  color: #78826b;
+  line-height: 1.4;
+}
+.shop-rewards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.shop-rewards > button {
+  min-width: 0;
+}
+.unlock-offer > svg:last-of-type {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.release-game .sheet .shop {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: visible;
+  gap: 0.35rem;
+  padding: 0.4rem 0;
+  scroll-snap-type: none;
+}
+.release-game .sheet .card {
+  min-width: 0;
+  min-height: 4.4rem;
+  padding: 0.3rem 0.1rem;
+  border-radius: 0.7rem;
+  gap: 0.15rem;
+}
+.release-game .sheet .card > svg {
+  width: 2.7rem;
+  height: 2.7rem;
+}
+.release-game .sheet .card:after {
+  display: none;
+}
+.release-game .sheet .card .currency {
+  font-size: 0.6rem;
+}
+.release-game .sheet .card .currency > svg {
+  width: 0.8rem !important;
+  height: 0.8rem !important;
+}
+.release-game .recipeDetails {
+  gap: 0.35rem;
+  margin: 0.55rem 0;
+}
+/* Centered HUD and icon-only abilities. */
+.release-game .stats,
+.release-game .levelbar {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+.release-game .wordmark {
+  display: none;
+}
+.release-game .toptools {
+  margin-left: auto;
+}
+.release-game .ability {
+  height: 3.3rem;
+  padding: 0.35rem;
+}
+.release-game .ability > .rasterSprite {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+.release-game .ability > small {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.2rem;
+  padding: 0.12rem 0.22rem;
+  background: #476348;
+  color: #fff6cf;
+  border-radius: 0.35rem;
+  font-size: 0.62rem;
+  line-height: 1;
+}
+.release-game .ability > .ability-badge {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+.release-game .ability .currency {
+  font-size: 0.55rem;
+  color: #fff0bc;
+}
+.release-game .dockactions {
+  grid-template-columns: 2.6rem 2.6rem 1fr;
+}
+.release-game #buildMode,
+.release-game #intelBtn {
+  min-width: 0;
+  padding: 0.3rem;
+}
+.release-game .screenhint small {
+  display: none;
+}
+.release-game .pad circle {
+  animation: none !important;
+}
+.release-game .pad .build-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pad-orbit 12s linear infinite !important;
+}
+.gamePaused .release-game .pad .build-ring {
+  animation-play-state: paused !important;
+}
+.battle-rewards {
+  position: fixed;
+  z-index: 17;
+  right: 1rem;
+  bottom: calc(var(--safe-bottom) + 9.4rem);
+}
+.gift-trigger {
+  position: relative;
+  width: 2.8rem;
+  height: 2.8rem;
+  background: #fff0bc;
+  border: 2px solid #dec174;
+  padding: 0.25rem;
+  border-radius: 0.85rem;
+  box-shadow: 0 3px 0 #b18c4b;
+}
+.gift-trigger > svg {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+.battle-reward-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  position: absolute;
+  bottom: 3.5rem;
+  right: 0;
+  animation: menu-in 0.2s both;
+}
+.battle-reward-options > button {
+  position: relative;
+  width: 5.6rem;
+  min-height: 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.35rem;
+  border: 2px solid #e6c887;
+  border-radius: 0.8rem;
+  background: #fff3ce;
+  color: #6f743e;
+  box-shadow: 0 3px 0 #b79e58;
+}
+.battle-reward-options > button > svg {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+/* Custom language picker supports pointer, touch and keyboard. */
+.language-setting {
+  overflow: visible;
+  position: relative;
+}
+.language-picker {
+  position: relative;
+}
+.language-picker > button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #e8ecd7;
+  border: 1px solid #c4d0ab;
+  min-width: 10rem;
+  min-height: 2.6rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.7rem;
+  color: #496847;
+  font-size: 0.8rem;
+}
+.language-code {
+  font-size: 0.55rem;
+  font-weight: 700;
+  border-radius: 0.3rem;
+  padding: 0.25rem;
+  background: #60865b;
+  color: #fff5d4;
+}
+.chevron {
+  margin-left: auto;
+  font-size: 1.1rem;
+  transition: transform 0.2s;
+}
+.chevron.up {
+  transform: rotate(180deg);
+}
+.language-options {
+  position: absolute;
+  z-index: 5;
+  width: 100%;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  padding: 0.3rem;
+  border: 1px solid #b9c9a1;
+  border-radius: 0.8rem;
+  box-shadow: 0 0.5rem 1rem #304c3426;
+  background: #fff8e4;
+  animation: menu-in 0.18s both;
+}
+.language-options > button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  min-height: 2.4rem;
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #456744;
+  font-size: 0.75rem;
+}
+.language-options > button > span:last-child {
+  margin-left: auto;
+}
+.language-options > button[aria-selected="true"] {
+  background: #e7edcf;
+}
+/* Presence keeps dialogs mounted until their exit motion is finished. */
+.release-overlay {
+  animation: overlay-in 0.2s both;
+}
+.release-overlay .modal {
+  animation: dialog-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: center;
+}
+.release-overlay.closing {
+  animation: overlay-out 0.19s both;
+}
+.release-overlay.closing .modal {
+  animation: dialog-out 0.19s both;
+}
+.release-game .sheet.open {
+  animation: sheet-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.release-game .sheet.open.closing {
+  animation: sheet-out 0.19s both;
+}
+.release-game .bottomnav.open,
+.release-game .abilities-expanded .abilities {
+  animation: menu-in 0.18s both;
+}
+.release-overlay .perk,
+.release-overlay .mission {
+  animation: tile-pop 0.25s both;
+}
+.collection-card:nth-child(2),
+.perk:nth-child(2),
+.mission:nth-child(2) {
+  animation-delay: 0.025s;
+}
+.collection-card:nth-child(3),
+.perk:nth-child(3),
+.mission:nth-child(3) {
+  animation-delay: 0.05s;
+}
+.collection-card:nth-child(4),
+.mission:nth-child(4) {
+  animation-delay: 0.075s;
+}
+.ad-demo {
+  text-align: center;
+}
+.ad-demo .demo-label {
+  margin-bottom: 0.6rem;
+}
+.ad-gift {
+  animation: gift-float 2s ease-in-out infinite;
+}
+.ad-reward-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.4rem;
+  color: #95712b;
+  margin: 0.7rem;
+}
+.ad-reward-preview > svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.ad-spot {
+  border-radius: 1rem;
+  padding: 0.8rem;
+  margin: 0.6rem 0;
+  background: #e9ecd2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.ad-spot > svg {
+  width: 3rem;
+  height: 3rem;
+  animation: gift-float 2s ease-in-out infinite;
+}
+.ad-spot > svg:nth-child(2) {
+  animation-delay: -0.5s;
+}
+.ad-spot > svg:nth-child(3) {
+  animation-delay: -1s;
+}
+@keyframes map-reveal {
+  from {
+    opacity: 0;
+    transform: rotate(-4deg) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-2deg) scale(1);
+  }
+}
+@keyframes play-breathe {
+  0%,
+  80%,
+  100% {
+    filter: brightness(1);
+  }
+  90% {
+    filter: brightness(1.12);
+  }
+}
+@keyframes pad-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(0.8rem) scale(0.97);
+  }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    translate: 0 1.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes sheet-out {
+  to {
+    opacity: 0;
+    translate: 0 1.5rem;
+  }
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes tile-pop {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes gift-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-0.3rem) rotate(3deg);
+  }
+}
+@media (hover: hover) {
+  .game-lobby .choice:hover:not(:disabled),
+  .game-lobby .mode-choice:hover:not(:disabled),
+  .game-lobby .lobby-nav > button:hover:not(:disabled) {
+    translate: 0 -2px;
+    filter: brightness(1.08);
+  }
+  .collection-select:hover > svg:first-child {
+    transform: scale(1.08);
+  }
+  .collection-select > svg {
+    transition: transform 0.18s;
+  }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  .game-lobby {
+    padding: max(0.6rem, env(safe-area-inset-top)) 0.9rem
+      max(0.65rem, env(safe-area-inset-bottom));
+    gap: 0.7rem;
+    justify-content: space-between;
+  }
+  .game-lobby .lobby-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: 100%;
+    flex: 1;
+    justify-content: center;
+  }
+  .game-lobby .brand {
+    font-size: 1rem;
+  }
+  .game-lobby .brand b {
+    font-size: 1.15rem;
+  }
+  .game-lobby .brand > svg {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+  .map-stage {
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+  .map-stage-frame {
+    width: min(82%, 32dvh);
+    border-width: 0.3rem;
+    border-radius: 1.5rem;
+  }
+  .map-stage-title {
+    margin: 0.75rem 0 0;
+    gap: 0.25rem;
+  }
+  .map-stage-title > svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .map-stage h1 {
+    font-size: 1rem;
+  }
+  .map-record {
+    top: 0;
+    right: 0.4rem;
+    font-size: 0.75rem;
+    padding: 0.3rem;
+  }
+  .map-record svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+  .game-lobby .run-setup {
+    padding: 0;
+    max-width: 31rem;
+  }
+  .game-lobby .choices {
+    margin: 0 0 0.6rem;
+    gap: 0.45rem;
+  }
+  .game-lobby .map-choices .choice {
+    height: min(15dvh, 6.2rem);
+    aspect-ratio: auto;
+    border-radius: 0.65rem;
+  }
+  .game-lobby .difficulty-choices .choice {
+    min-height: 3rem;
+    padding: 0.3rem;
+  }
+  .game-lobby .mode-choices {
+    margin-bottom: 0.75rem;
+    gap: 0.4rem;
+  }
+  .game-lobby .mode-choice {
+    min-height: 3.7rem;
+    border-radius: 0.65rem;
+  }
+  .game-lobby .mode-choice b {
+    font-size: 0.6rem;
+  }
+  .game-lobby .mode-choice > svg {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+  .game-lobby .play-cta {
+    min-height: 3.1rem;
+    font-size: 1.15rem;
+    padding: 0.3rem !important;
+  }
+  .game-lobby .lobby-nav {
+    gap: 0.65rem;
+  }
+  .game-lobby .lobby-nav > button {
+    width: 3.1rem;
+    height: 3.1rem;
+    border-radius: 0.8rem;
+  }
+  .game-lobby .lobby-nav > button > svg {
+    width: 2rem;
+    height: 2rem;
+  }
+  .game-lobby .lobby-nav > .reward-offer {
+    width: 7rem;
+  }
+  .shop-modal .collection {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+  .shop-modal .collection-card > .collection-select {
+    height: 3.6rem;
+  }
+  .collection-select > svg {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+}
+@media (max-width: 340px) {
+  .shop-modal .collection {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .shop-modal .collection-card > .collection-select {
+    height: 3.1rem;
+  }
+  .collection-select > svg {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+}
+@media (max-height: 700px) and (orientation: portrait) {
+  .game-lobby {
+    gap: 0.4rem;
+  }
+  .game-lobby .lobby-layout {
+    gap: 0.5rem;
+  }
+  .map-stage-frame {
+    width: min(70%, 27dvh);
+  }
+  .game-lobby .map-choices .choice {
+    height: 4.6rem;
+  }
+  .game-lobby .mode-choice {
+    min-height: 3.3rem;
+  }
+  .game-lobby .resume-button {
+    font-size: 0.6rem;
+    margin-top: 0.4rem;
+    min-height: 1.7rem;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-lobby {
+    gap: 0.4rem;
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+  .game-lobby .lobby-layout {
+    flex: 1;
+    gap: 1.5rem;
+    grid-template-columns: 1fr 1.2fr;
+  }
+  .game-lobby .lobby-top {
+    position: relative;
+    height: 2.6rem;
+  }
+  .game-lobby .brand > svg {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+  .game-lobby .brand {
+    font-size: 0.8rem;
+  }
+  .game-lobby .brand b {
+    font-size: 0.9rem;
+  }
+  .map-stage {
+    padding: 0;
+  }
+  .map-stage-frame {
+    width: min(100%, 58dvh);
+    border-width: 0.3rem;
+    border-radius: 1.3rem;
+  }
+  .map-stage-title {
+    margin-top: 0.7rem;
+  }
+  .map-stage h1 {
+    font-size: 1rem;
+  }
+  .map-record {
+    font-size: 0.65rem;
+  }
+  .game-lobby .run-setup {
+    padding: 0;
+  }
+  .game-lobby .choices {
+    margin-bottom: 0.55rem;
+  }
+  .game-lobby .map-choices .choice {
+    height: 4.4rem;
+    aspect-ratio: auto;
+  }
+  .game-lobby .difficulty-choices .choice {
+    min-height: 2.6rem;
+    padding: 0.2rem;
+  }
+  .game-lobby .mode-choices {
+    margin-bottom: 0.65rem;
+  }
+  .game-lobby .mode-choice {
+    min-height: 3.2rem;
+  }
+  .game-lobby .mode-choice > svg {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+  .game-lobby .play-cta {
+    min-height: 2.8rem;
+    padding: 0.3rem !important;
+    font-size: 1rem;
+  }
+  .game-lobby .lobby-nav > button {
+    width: 2.7rem;
+    height: 2.7rem;
+  }
+  .game-lobby .lobby-nav > button > svg {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+  .game-lobby .lobby-nav > .reward-offer {
+    width: 6rem;
+  }
+  .game-lobby .resume-button {
+    min-height: 1.6rem;
+    margin-top: 0.3rem;
+    font-size: 0.6rem;
+  }
+  .battle-rewards {
+    bottom: calc(var(--safe-bottom) + 7.5rem);
+  }
+}
+@media (min-width: 1000px) {
+  .battle-rewards {
+    right: calc((100% - 58rem) / 2);
+  }
+  .release-game .stats {
+    top: var(--safe-top);
+  }
+  .release-game .levelbar {
+    top: calc(var(--safe-top) + 3.05rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .release-overlay,
+  .release-overlay .modal,
+  .release-game .sheet,
+  .game-lobby .play-cta,
+  .map-stage-frame,
+  .collection-card,
+  .release-overlay .perk,
+  .release-overlay .mission,
+  .ad-gift,
+  .ad-spot > svg,
+  .language-options,
+  .battle-reward-options {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .release-game .pad .build-ring {
+    animation: none !important;
+  }
+  button {
+    transition: none;
+  }
+}
+.release-game .scene-viewport {
+  background: var(--map-ground) !important;
+}
+.release-game .map-theme-1 .scenery-prop {
+  opacity: 0.8;
+}
+.game-lobby .play-cta {
+  justify-content: center;
+}
+.release-overlay .lobby-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #294238;
+  pointer-events: none;
+  overflow: hidden;
+}
+.lobby-dialog-backdrop > .map-preview {
+  width: min(90dvh, 90vw);
+  height: min(90dvh, 90vw);
+  border-radius: 2rem;
+  opacity: 0.2;
+  transform: rotate(-4deg) scale(1.1);
+}
+.release-overlay .perk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.release-overlay .perk-grid .perk {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  padding: 0.8rem 0.4rem;
+  border-radius: 0.9rem;
+  min-width: 0;
+}
+.perk-grid .perk > svg {
+  width: 3.4rem;
+  height: 3.4rem;
+}
+.perk-grid .perk > span {
+  display: none;
+}
+.perk-grid .perk b {
+  font-size: 0.78rem;
+}
+.perk-grid .perk small {
+  font-size: 0.63rem;
+  line-height: 1.45;
+  margin-top: 0.4rem;
+}
+.release-game .map-theme-1 .scenery-prop {
+  opacity: 1;
+}
+.release-overlay.closing,
+.release-overlay.closing .modal,
+.release-game .sheet.open.closing {
+  pointer-events: none !important;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .release-overlay .shop-modal {
+    max-width: 56rem;
+    padding: 0.9rem;
+  }
+  .shop-modal .modal-heading h2 {
+    font-size: 1.4rem;
+    margin: 0.1rem 0;
+  }
+  .shop-modal .shop-tabs {
+    margin: 0.5rem 0 0.65rem;
+  }
+  .shop-modal .collection-card > .collection-select {
+    height: 2.8rem;
+  }
+  .shop-modal .collection-select > svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .shop-modal .collection-detail {
+    min-height: 2.5rem;
+    margin: 0.6rem 0;
+  }
+  .shop-modal .reward-offer {
+    min-height: 2.6rem;
+    padding: 0.2rem;
+  }
+  .shop-modal .reward-offer > svg {
+    width: 2rem;
+    height: 2rem;
+  }
+  .shop-modal .secondary {
+    min-height: 2.4rem;
+    margin-top: 0.6rem;
+  }
+}

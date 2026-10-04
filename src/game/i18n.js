@@ -1,5 +1,9 @@
 // Russian strings are stable keys, including content loaded from game configuration.
 const en = {
+  "Открыть за просмотр": "Unlock with a video",
+  "Пополнить жизни": "Restore lives",
+  "Перезарядить силы": "Recharge abilities",
+  Подарки: "Gifts",
   "Горячая смена.": "A fresh shift.",
   "Вкусная оборона.": "Delicious defense.",
   "Твоя кухня. Твои правила.": "Your kitchen. Your rules.",
