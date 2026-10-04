@@ -1,0 +1,687 @@
+/* Soft, simple mobile game presentation. */
+:root {
+  --cream: #fff8ee;
+  --ink: #504251;
+  --red: #ed7965;
+  --green: #68a781;
+}
+.app {
+  background: #fff8ef;
+}
+.top {
+  background: #fff8ef;
+  color: #655068;
+  border: 0;
+  height: 62px;
+}
+.top:after {
+  display: none;
+}
+.logo {
+  border: 0;
+  box-shadow: none;
+  background: #ffe6ab;
+  transform: rotate(-5deg);
+}
+.wordmark {
+  font-size: 20px;
+  text-shadow: none;
+  letter-spacing: -0.5px;
+  color: #765362;
+}
+.wordmark small {
+  color: #b99287;
+  font-size: 9px;
+}
+.top .iconbtn {
+  background: #f1e6dc;
+  border: 0;
+  color: #ad8e87;
+}
+.stat {
+  border: 0;
+  box-shadow: none;
+  background: #fff;
+  border-radius: 18px;
+  padding: 5px 8px;
+}
+.stat small {
+  color: #bca294;
+  font-size: 10px;
+}
+.stat strong {
+  color: #68535f;
+}
+.levelbar {
+  color: #9b8c83;
+  font-size: 10px;
+  height: 29px;
+}
+.levelbar .line {
+  background: #eee2d4;
+  height: 4px;
+  box-shadow: none;
+}
+.levelbar button {
+  border: 0;
+  box-shadow: none;
+  background: #f2e5d6;
+  color: #a18771;
+}
+.mapwrap {
+  border: 0;
+  box-shadow: none;
+  border-radius: 25px;
+  margin: 3px 9px 10px;
+  background: #b9d9a8 !important;
+}
+.maptag {
+  background: #fff9edee;
+  border: 0;
+  box-shadow: none;
+  color: #74986c;
+  font-size: 10px;
+}
+.eventchip {
+  background: #fff9edee;
+  border: 0;
+  box-shadow: none;
+  color: #819773;
+  font-size: 10px;
+}
+.dock {
+  background: #fff8ef;
+  padding-bottom: 7px;
+}
+.ability {
+  background: #fff;
+  border: 0;
+  box-shadow: none;
+  border-radius: 18px;
+  height: 65px;
+  min-height: 65px;
+}
+.ability strong {
+  font-weight: 600;
+  color: #846957;
+}
+.ability small {
+  color: #b3a293;
+}
+.ability i {
+  background: #edc490;
+  height: 3px;
+}
+.ability.active {
+  background: #ffedcc;
+  border: 0;
+  box-shadow: none;
+}
+.dockactions button {
+  background: #f4e7d6;
+  border: 0;
+  box-shadow: none;
+  color: #a2886b;
+  border-radius: 17px;
+  font-size: 12px;
+  min-height: 47px;
+}
+.dockactions .wavebtn {
+  background: #70b18a;
+  border: 0;
+  box-shadow: none;
+  color: #fff;
+  animation: none;
+}
+.nativefoot {
+  background: #fff8ef;
+  color: #baaa9b;
+  font-size: 9px;
+}
+.nativefoot button {
+  color: #b19985;
+  font-size: 11px;
+}
+.sheet {
+  background: #fff9ef;
+  box-shadow: 0 -12px 45px #71685c28;
+  border: 0;
+  border-radius: 28px 28px 0 0;
+  padding: 10px 15px calc(16px + env(safe-area-inset-bottom));
+  max-height: 80%;
+}
+.handle {
+  background: #e4d8c9;
+}
+.sheethead {
+  color: #81636a;
+  font-size: 18px;
+}
+.sheethead .iconbtn {
+  background: #f1e6d6;
+  border: 0;
+  color: #bca086;
+}
+.sheethead small {
+  color: #b39b84;
+  font-size: 12px;
+}
+.card {
+  background: #fff;
+  border: 2px solid transparent;
+  box-shadow: none;
+  border-radius: 18px;
+  min-height: 100px;
+}
+.card.active {
+  background: #fff0cc;
+  border-color: #e9c894;
+  box-shadow: none;
+}
+.card.active:after {
+  display: none;
+}
+.card strong {
+  font-weight: 500;
+  color: #8b6d60;
+  font-size: 12px;
+}
+.card span {
+  color: #b49b74;
+  font-size: 11px;
+}
+.primary {
+  background: #77b18a;
+  color: #fff;
+  border: 0;
+  box-shadow: none;
+  border-radius: 17px;
+  min-height: 48px;
+}
+.secondary {
+  background: #f3e7d6;
+  border: 0;
+  box-shadow: none;
+  color: #ab8c70;
+  border-radius: 16px;
+}
+.recipeInfo {
+  color: #a4917d;
+  font-size: 13px;
+}
+.recipeInfo b {
+  color: #806459;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+}
+.modal {
+  background: #fff9ef;
+  border: 0;
+  box-shadow: 0 25px 90px #37403444;
+  border-radius: 29px;
+  padding: 23px;
+}
+.modal h2 {
+  color: #855f62;
+  font-size: 27px;
+  letter-spacing: -0.8px;
+}
+.modal p {
+  color: #a78e7f;
+  font-size: 14px;
+}
+.modal .primary {
+  background: #e99a7d;
+  box-shadow: none;
+  border: 0;
+}
+.eyebrow {
+  font-size: 10px;
+  color: #c39784;
+  letter-spacing: 1px;
+}
+.choices {
+  gap: 7px;
+}
+.choice {
+  background: #fff;
+  border: 2px solid transparent;
+  box-shadow: none;
+  color: #a08071;
+  border-radius: 17px;
+  font-size: 12px;
+}
+.choice.active {
+  background: #fff0cb;
+  border-color: #e7cba0;
+  box-shadow: none;
+}
+.choice small {
+  color: #b59b80;
+  font-size: 11px;
+}
+.towerhead b {
+  color: #80606a;
+}
+.towerhead small {
+  font-size: 12px;
+  color: #b39883;
+}
+.actions button {
+  border: 0;
+  box-shadow: none;
+  background: #f1e3ce;
+  color: #a18167;
+  border-radius: 15px;
+}
+.actions .sell {
+  border: 0;
+  background: #f8e7db;
+  color: #b69a86;
+}
+.toast {
+  background: #7b7365ee;
+  border: 0;
+  box-shadow: none;
+  font-weight: 500;
+  font-size: 12px;
+}
+.banner {
+  background: #e9a177;
+  border: 3px solid #fff5db;
+  box-shadow: 0 7px 25px #916c4b20;
+  border-radius: 23px;
+}
+.banner strong {
+  font-size: 27px;
+  letter-spacing: -0.5px;
+}
+.banner small {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.casual .chapter,
+.casual .quest,
+.casual .advancedAction,
+.casual [data-ability="trap"],
+.casual [data-ability="rally"] {
+  display: none !important;
+}
+.casual .screenhint {
+  bottom: 21px;
+  color: #63805b;
+  background: #f8ffedbd;
+  padding: 7px;
+  border-radius: 12px;
+  left: 14%;
+  right: 14%;
+  font-size: 12px;
+  z-index: 3;
+}
+.casual .abilities {
+  gap: 9px;
+}
+.casual .ability {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  grid-template-rows: 1fr 1fr;
+  column-gap: 5px;
+  text-align: left;
+  padding: 10px 9px;
+  min-height: 61px;
+  height: 61px;
+  justify-items: start;
+}
+.casual .ability svg,
+.casual .ability .rasterSprite {
+  grid-column: 1;
+  grid-row: 1/3;
+  width: 31px;
+  height: 31px;
+  align-self: center;
+}
+.casual .ability strong {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  font-size: 12px;
+}
+.casual .ability small {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  font-size: 11px;
+  margin-top: 2px;
+}
+.casual .dockactions #intelBtn {
+  display: none;
+}
+.casual .dockactions .wavebtn {
+  flex: 1.6;
+}
+.casual .dockactions #buildMode {
+  flex: 1;
+}
+.casual .maptag {
+  background: #fff9eee5;
+}
+.casual .eventchip {
+  display: none;
+}
+.casual .bossbar {
+  left: 26%;
+  font-size: 9px;
+  background: #b99069ed;
+  border: 0;
+  color: #fff7df;
+}
+.casual .mapwrap {
+  margin-bottom: 12px;
+}
+.casual .towerhead .rasterSprite {
+  width: 72px;
+  height: 72px;
+}
+.casual .recipeInfo {
+  margin: 12px 0 16px;
+}
+.casual .sheet .shop {
+  grid-template-columns: repeat(4, 1fr);
+}
+.casual .nativefoot {
+  height: 24px;
+}
+.casual .ability:disabled {
+  opacity: 0.48;
+}
+.setting {
+  font-size: 13px;
+  border-color: #f0e4d4;
+}
+.perk {
+  background: #fff;
+  border: 0;
+  box-shadow: none;
+  border-radius: 19px;
+}
+.perk b {
+  color: #967769;
+  font-size: 14px;
+}
+.perk small {
+  color: #b29780;
+  font-size: 13px;
+}
+.intelrow {
+  border-color: #eee2d0;
+}
+.rule {
+  color: #947c6b;
+}
+.medal {
+  border: 0;
+  background: #f2e9db;
+}
+.medal.earned {
+  background: #ffedc5;
+  box-shadow: none;
+}
+.loading {
+  background: #fff7eb;
+  color: #c79075;
+}
+.loadPizza {
+  font-size: 27px;
+}
+.loading p {
+  color: #b2957c;
+}
+.mapThumb {
+  width: 100%;
+  height: 60px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: #c4dfad;
+}
+.mapswatch {
+  display: none;
+}
+.mapThumb path {
+  stroke: #ffe7ab;
+  stroke-width: 35;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rasterSprite {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  flex-shrink: 0;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 2px #98733b17);
+  pointer-events: none;
+}
+.card .rasterSprite {
+  width: 53px;
+  height: 53px;
+  transition: transform 0.2s;
+}
+.card.active .rasterSprite {
+  transform: translateY(-2px) scale(1.08);
+}
+.towerhead .rasterSprite {
+  width: 62px;
+  height: 62px;
+}
+.primary .rasterSprite {
+  width: 27px;
+  height: 27px;
+}
+.modal .hero.rasterSprite {
+  display: block;
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 5px;
+  animation: heroHover 3s ease-in-out infinite alternate;
+}
+.perk .rasterSprite {
+  width: 48px;
+  height: 48px;
+}
+.intelrow .rasterSprite {
+  width: 49px;
+  height: 49px;
+}
+.logo .rasterSprite {
+  width: 38px;
+  height: 38px;
+}
+.choice .mapThumb {
+  pointer-events: none;
+}
+.raster-art {
+  image-rendering: auto;
+}
+.milestone {
+  background: #ffe4b2;
+  border: 0;
+  box-shadow: 0 8px 25px #96764222;
+  color: #af865a;
+}
+.game-note {
+  color: #b19785;
+}
+.casual .buildModeOn {
+  background: #ffeac6 !important;
+  border: 0 !important;
+}
+@media (max-width: 360px) {
+  .casual .ability {
+    padding: 8px 6px;
+    grid-template-columns: 27px 1fr;
+    column-gap: 3px;
+  }
+  .casual .ability svg {
+    width: 26px;
+    height: 26px;
+  }
+  .casual .ability strong {
+    font-size: 11px;
+  }
+  .card strong {
+    font-size: 11px;
+  }
+  .wordmark {
+    font-size: 18px;
+  }
+}
+@media (max-height: 700px) {
+  .top {
+    height: 51px;
+  }
+  .stats {
+    height: 48px;
+  }
+  .levelbar {
+    height: 27px;
+  }
+  .casual .ability {
+    min-height: 54px;
+    height: 54px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .casual .ability small {
+    display: block;
+  }
+  .dockactions button {
+    min-height: 43px;
+  }
+  .mapThumb {
+    height: 48px;
+  }
+  .modal .hero.rasterSprite {
+    width: 80px;
+    height: 80px;
+  }
+  .card {
+    min-height: 90px;
+  }
+  .card .rasterSprite {
+    width: 47px;
+    height: 47px;
+  }
+  .modal {
+    padding: 19px;
+  }
+}
+#defaultDecor,
+#mapDecor,
+#boardProps,
+#map > rect[fill="url(#grass)"] {
+  display: none !important;
+}
+.rasterSprite {
+  background: none !important;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+.rasterSprite image {
+  image-rendering: auto;
+}
+.raster-art {
+  filter: drop-shadow(0 2px 2px #485a3533);
+}
+.casual .map {
+  background: #b7d58e;
+}
+.casual .mapwrap {
+  background: #b7d58e !important;
+}
+.casual .recipeDetails {
+  display: none;
+}
+.casual .actions .sell {
+  font-size: 12px;
+}
+.casual .sheethead {
+  font-size: 18px;
+}
+.casual .shop {
+  gap: 7px;
+}
+.casual .card {
+  padding-top: 5px;
+  padding-bottom: 7px;
+}
+.casual .card .rasterSprite {
+  width: 56px;
+  height: 56px;
+}
+.casual .sheet .card strong {
+  font-size: 11px;
+}
+.casual .primary svg:not(.rasterSprite) {
+  width: 22px;
+}
+.maptag {
+  max-width: 65%;
+}
+.casual .modal .hero.rasterSprite {
+  filter: none;
+}
+.casual .sheet .towerhead .rasterSprite {
+  filter: none;
+}
+.casual #range {
+  stroke: #fffadc;
+  fill: #fffbd3;
+  filter: none;
+  animation: none;
+}
+.choice .mapThumb {
+  height: 58px;
+  opacity: 0.9;
+}
+.choice.active .mapThumb {
+  opacity: 1;
+}
+.casual .banner small {
+  letter-spacing: 0.4px;
+}
+.logo {
+  width: 42px;
+  height: 42px;
+}
+.logo .rasterSprite {
+  width: 40px;
+  height: 40px;
+}
+.rasterSprite.hero {
+  animation: heroHover 4s ease-in-out infinite alternate;
+}
+.tower.building .art,
+.tower.levelup .art {
+  animation: none !important;
+}
+.tower.building > g:first-child {
+  animation: towerBuild 0.36s cubic-bezier(0.2, 0.8, 0.25, 1.15);
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.tower.levelup > g:first-child {
+  animation: towerUpgrade 0.36s ease-out;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tower.building > g:first-child,
+  .tower.levelup > g:first-child {
+    animation: none;
+  }
+}

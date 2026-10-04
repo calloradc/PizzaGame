@@ -1,0 +1,229 @@
+/* Mobile board coordinates stay isotropic while the garden fills the viewport. */
+#mapMount,
+.map {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.mapwrap {
+  min-height: 0;
+  overflow: hidden;
+}
+.map {
+  background: transparent !important;
+}
+.pad,
+.pad circle,
+.pad path {
+  animation: none !important;
+  opacity: 1;
+}
+.pad .pad-base {
+  fill: #e6efb7;
+  stroke: #80a45a;
+  stroke-width: 2;
+}
+.pad .build-ring {
+  animation: padOrbit 12s linear infinite !important;
+  transform-box: view-box;
+  transform-origin: 0 0;
+  fill: none !important;
+  stroke: #fff8ce;
+  stroke-width: 2.5;
+  opacity: 1 !important;
+}
+.pad.highlight .pad-base,
+.pad.selected .pad-base {
+  fill: #fff4b0;
+  stroke: #73964d;
+}
+.pad.highlight .build-ring,
+.pad.selected .build-ring {
+  stroke: #fff8d8;
+  stroke-width: 3;
+}
+.pad .pad-hit {
+  fill: transparent !important;
+  stroke: none !important;
+}
+.pad path {
+  stroke: #729654;
+}
+.enemy .enemy-art {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: none !important;
+}
+.raster-art {
+  overflow: hidden;
+}
+.tower > g:first-child {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+.rasterSprite {
+  filter: drop-shadow(0 1px 1px #795c3a20);
+}
+@keyframes padOrbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.nativefoot.bottomnav,
+.casual .nativefoot.bottomnav {
+  height: 59px;
+  min-height: 59px;
+  flex-shrink: 0;
+  padding: 4px 10px 5px;
+  gap: 8px;
+  background: #fff8ef;
+  border-top: 1px solid #eadccc;
+  display: flex;
+  align-items: stretch;
+}
+.nativefoot.bottomnav button {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 14px;
+  background: #f5e9d9;
+  color: #785748;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 6px;
+}
+.bottomnav .rasterSprite {
+  width: 25px;
+  height: 25px;
+}
+.bottomnav button:active {
+  background: #ffdf9c;
+  transform: scale(0.95);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.dockactions button {
+  color: #765b42;
+}
+.dockactions .wavebtn {
+  background: #57a477;
+  color: #fff;
+}
+.ability strong {
+  color: #715244;
+}
+.ability small {
+  color: #8c7766;
+}
+.stat small {
+  color: #957968;
+}
+.modal p,
+.recipeInfo {
+  color: #877061;
+}
+.top .iconbtn {
+  background: #f1dfc9;
+}
+.screenhint {
+  z-index: 3;
+}
+.dock {
+  padding-bottom: 8px;
+}
+.dockactions .rasterSprite {
+  width: 24px;
+  height: 24px;
+}
+.stats .rasterSprite {
+  width: 32px;
+  height: 32px;
+}
+.toptools .rasterSprite {
+  width: 26px;
+  height: 26px;
+}
+@media (max-height: 700px) {
+  .nativefoot.bottomnav,
+  .casual .nativefoot.bottomnav {
+    height: 54px;
+    min-height: 54px;
+    padding-top: 2px;
+    padding-bottom: 3px;
+  }
+  .bottomnav .rasterSprite {
+    width: 23px;
+    height: 23px;
+  }
+  .nativefoot.bottomnav button {
+    min-height: 47px;
+  }
+  .casual .mapwrap {
+    margin-bottom: 7px;
+  }
+  .dock {
+    padding-bottom: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pad .build-ring {
+    animation: none !important;
+  }
+}
+
+/* Transform the isolated 56px sprite around its base, in JS, for all tower actions. */
+.tower.building > g:first-child,
+.tower.levelup > g:first-child {
+  animation: none !important;
+  transform-origin: 0 0 !important;
+  transform-box: view-box;
+}
+.tower.selected .art {
+  filter: url(#towerOutline);
+}
+.entryFlow {
+  animation: entryFlow 1.05s linear infinite;
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+@keyframes entryFlow {
+  to {
+    transform: translateX(20px);
+  }
+}
+.app {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  box-sizing: border-box;
+}
+.top,
+.stats,
+.levelbar {
+  flex-shrink: 0;
+}
+.pad .build-ring {
+  stroke-dasharray: 5 4 !important;
+}
+.pad,
+.pad * {
+  transform-box: view-box;
+}
+.pad .build-ring {
+  transform-origin: 0 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .entryFlow {
+    animation: none !important;
+  }
+}

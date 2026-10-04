@@ -1,7 +1,60 @@
-import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';
-const root=path.resolve('dist'),files=['index.html','assets/sprites.svg','assets/board.svg','assets/favicon.svg','assets/rubik-regular.woff','assets/rubik-bold.woff','css/game.css','css/polish.css','js/boot.js','js/game.js','js/config.js','js/effects.js','js/audio.js','js/art.js','css/casual.css','assets/towers-atlas.png','assets/enemies-atlas.png','assets/garden.png','assets/icons-atlas.png','assets/ammo-atlas.png','css/ultra.css'];for(const f of files){if(!fs.existsSync(path.join(root,f))||!fs.statSync(path.join(root,f)).size)throw Error('Missing asset: '+f)}
-for(const f of fs.readdirSync(path.join(root,'js')))if(f.endsWith('.js'))execFileSync(process.execPath,['--check',path.join(root,'js',f)]);
-const html=fs.readFileSync(path.join(root,'index.html'),'utf8');for(const m of html.matchAll(/(?:href|src)="(\.\/[^"#]+)"/g)){if(!fs.existsSync(path.join(root,m[1])))throw Error('Missing HTML reference '+m[1])}
-for(const name of ['game.css','polish.css','casual.css','ultra.css']){let css=fs.readFileSync(path.join(root,'css',name),'utf8');for(const m of css.matchAll(/url\(['"]?([^\)'"#]+)['"]?\)/g)){if(!fs.existsSync(path.resolve(root,'css',m[1])))throw Error('Missing CSS reference '+m[1])}}
-const sprites=fs.readFileSync(path.join(root,'assets/sprites.svg'),'utf8'),board=fs.readFileSync(path.join(root,'assets/board.svg'),'utf8'),ids=new Set([...sprites.matchAll(/id="([^"]+)"/g),...board.matchAll(/id="([^"]+)"/g)].map(m=>m[1]));for(const m of (sprites+board).matchAll(/(?:href="#|url\(#)([^"\)]+)/g))if(!ids.has(m[1]))throw Error('Missing SVG reference '+m[1]);
-console.log('Local assets, module syntax, fonts and SVG references verified.');
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+
+const root = path.resolve("src");
+const required = [
+  "main.jsx",
+  "App.jsx",
+  "components.jsx",
+  ...["engine", "config", "effects", "audio", "art"].map(
+    (name) => `game/${name}.js`,
+  ),
+  ...["game", "polish", "casual", "ultra"].map((name) => `styles/${name}.css`),
+  ...[
+    "towers-atlas.png",
+    "enemies-atlas.png",
+    "garden.png",
+    "icons-atlas.png",
+    "ammo-atlas.png",
+    "sprites.svg",
+    "board.svg",
+    "favicon.svg",
+    "rubik-regular.woff",
+    "rubik-bold.woff",
+  ].map((name) => `assets/${name}`),
+];
+for (const file of required)
+  assert(
+    fs.statSync(path.join(root, file)).size > 0,
+    `Missing source or asset: ${file}`,
+  );
+for (const file of fs.readdirSync(path.join(root, "game"))) {
+  if (file.endsWith(".js"))
+    execFileSync(process.execPath, ["--check", path.join(root, "game", file)]);
+}
+for (const name of ["game", "polish", "casual", "ultra"]) {
+  const css = fs.readFileSync(path.join(root, `styles/${name}.css`), "utf8");
+  for (const match of css.matchAll(/url\(['"]?([^\)'"#]+)['"]?\)/g)) {
+    assert(
+      fs.existsSync(path.resolve(root, "styles", match[1])),
+      `Missing CSS reference ${match[1]}`,
+    );
+  }
+}
+const svg = ["sprites", "board"]
+  .map((name) => fs.readFileSync(path.join(root, `assets/${name}.svg`), "utf8"))
+  .join("\n");
+const ids = new Set(
+  [...svg.matchAll(/id="([^"]+)"/g)].map((match) => match[1]),
+);
+for (const match of svg.matchAll(/(?:href="#|url\(#)([^"\)]+)/g))
+  assert(ids.has(match[1]), `Missing SVG reference ${match[1]}`);
+assert(
+  fs.statSync("public/assets/font-notice.txt").size > 0,
+  "Font license missing",
+);
+console.log(
+  "React sources, engine syntax, assets, fonts and SVG references verified.",
+);
