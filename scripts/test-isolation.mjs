@@ -28,7 +28,7 @@ globalThis.document = {
   },
 };
 await prepareRasterImages();
-assert.equal(crops.length, 67);
+assert.equal(crops.length, 84);
 for (const id of [
   "t-pepper",
   "t-cheese",
@@ -44,15 +44,27 @@ for (const id of [
   "e-chiliboss",
   "e-general",
   "d-tree",
+  "ad-video",
+  "treasure",
+  "coin-global",
+  "coin-battle",
+  "confirm",
+  "i-close",
+  "recharge",
+  "mode-map",
+  "shop-bag",
+  "s-parasol",
+  "s-stall",
+  "s-mill",
 ]) {
   const a = artFor(id);
   assert(a.url.startsWith("data:image/png;"));
   assert.deepEqual(a.box, [0, 0, ...a.size]);
-  assert(a.size[0] < 500 && a.size[1] < 500);
+  assert(a.size[0] <= 256 && a.size[1] <= 256);
 }
 console.log(
-  "67 atlas frames become independent bitmaps before scene creation.",
+  "84 atlas frames become independent bitmaps before scene creation.",
 );
 
 await prepareRasterImages();
-assert.equal(crops.length, 67, "Preparing twice must reuse existing textures");
+assert.equal(crops.length, 84, "Preparing twice must reuse existing textures");

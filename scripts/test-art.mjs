@@ -66,8 +66,27 @@ const ids = [
   "d-rocks",
   "d-fence",
   "d-mushrooms",
+  "ad-video",
+  "treasure",
+  "coin-global",
+  "coin-battle",
+  "confirm",
+  "recharge",
+  "mode-map",
+  "shop-bag",
+  "s-parasol",
+  "s-flowers",
+  "s-olive",
+  "s-lantern",
+  "s-stall",
+  "s-jars",
+  "s-wheels",
+  "s-mill",
+  "s-cheese-rocks",
 ];
 const clips = new Set();
+assert.notDeepEqual(artFor("ad-video").box, artFor("treasure").box);
+assert.notDeepEqual(artFor("coin-battle").box, artFor("coin-global").box);
 const el = (tag, attrs = {}, parent) => {
   let n = { tag, attrs, children: [] };
   parent?.children.push(n);

@@ -73,7 +73,7 @@ test("simulated ad cancel pays nothing; completed ad pays once and has a persist
   ).toBeDisabled();
 });
 
-test("language and sliders persist and every visible menu uses English", async ({
+test("language and volume persist, quality control is removed and visible menus use English", async ({
   page,
 }) => {
   await lobby(page);
@@ -84,7 +84,7 @@ test("language and sliders persist and every visible menu uses English", async (
     page.getByRole("heading", { name: "Make it comfortable" }),
   ).toBeVisible();
   await page.locator("#volume").fill("35");
-  await page.locator("#quality").fill("20");
+  await expect(page.locator("#quality")).toHaveCount(0);
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Open kitchen", exact: true }),
@@ -95,7 +95,7 @@ test("language and sliders persist and every visible menu uses English", async (
   await page.reload();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.locator("#volume")).toHaveValue("35");
-  await expect(page.locator("#quality")).toHaveValue("20");
+  await expect(page.locator("#quality")).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
 
@@ -337,11 +337,9 @@ test("ad supply pays once between waves", async ({ page }) => {
   await page.clock.pauseAt(
     await page.evaluate(() => new Date(Date.now() + 1000).toISOString()),
   );
-  await page.getByRole("button", { name: "Меню игры", exact: true }).click();
   await page.getByRole("button", { name: /Поставка \+100/ }).click();
   await completeAd(page);
   await expect(page.locator("#money")).toHaveText("440");
-  await page.getByRole("button", { name: "Меню игры", exact: true }).click();
   await expect(
     page.getByRole("button", { name: /Поставка \+100/ }),
   ).toBeDisabled();

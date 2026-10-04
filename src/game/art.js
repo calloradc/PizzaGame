@@ -112,9 +112,52 @@ const expansionFrames = {
   reward: [418, 826, 418, 428],
   pulse: [836, 826, 418, 428],
 };
+const interfaceFrames = Object.fromEntries(
+  [
+    "ad-video",
+    "treasure",
+    "coin-global",
+    "coin-battle",
+    "confirm",
+    "i-close",
+    "recharge",
+    "mode-map",
+    "shop-bag",
+  ].map((id, i) => [id, [(i % 3) * 418, Math.floor(i / 3) * 418, 418, 418]]),
+);
+const sceneryFrames = {
+  "s-parasol": [124, 113, 213, 266],
+  "s-flowers": [490, 157, 282, 231],
+  "s-olive": [915, 108, 246, 279],
+  "s-lantern": [106, 495, 233, 290],
+  "s-stall": [485, 512, 292, 270],
+  "s-jars": [918, 530, 260, 263],
+  "s-wheels": [107, 920, 257, 226],
+  "s-mill": [495, 876, 266, 291],
+  "s-cheese-rocks": [896, 916, 282, 239],
+};
 export function artFor(id) {
-  id = { blizzard: "freeze", chili: "rally", "i-target": "i-full" }[id] || id;
+  id =
+    {
+      blizzard: "freeze",
+      chili: "rally",
+      "i-target": "i-full",
+      coin: "coin-global",
+      reward: "treasure",
+    }[id] || id;
   if (prepared.has(id)) return prepared.get(id);
+  if (interfaceFrames[id])
+    return {
+      url: new URL("../assets/interface-atlas.webp", import.meta.url).href,
+      size: [1254, 1254],
+      box: interfaceFrames[id],
+    };
+  if (sceneryFrames[id])
+    return {
+      url: new URL("../assets/scenery-atlas.webp", import.meta.url).href,
+      size: [1254, 1254],
+      box: sceneryFrames[id],
+    };
   if (expansionFrames[id])
     return {
       url: new URL("../assets/expansion-atlas.webp", import.meta.url).href,
@@ -229,15 +272,19 @@ export function prepareRasterImages() {
 async function prepareFrames() {
   const images = new Map(),
     ids = [
-      ...Object.keys(towerFrames).map((n) =>
-        n === "pizza" || n === "shop" ? n : "t-" + n,
-      ),
-      ...Object.keys(enemyFrames).map((n) => "e-" + n),
-      ...iconNames,
-      ...ammoNames.map((n) => "a-" + n),
-      ...Object.keys(bonusFrames),
-      ...Object.keys(expansionFrames),
-      ...Object.keys(decorFrames),
+      ...new Set([
+        ...Object.keys(towerFrames).map((n) =>
+          n === "pizza" || n === "shop" ? n : "t-" + n,
+        ),
+        ...Object.keys(enemyFrames).map((n) => "e-" + n),
+        ...iconNames,
+        ...ammoNames.map((n) => "a-" + n),
+        ...Object.keys(bonusFrames),
+        ...Object.keys(expansionFrames),
+        ...Object.keys(decorFrames),
+        ...Object.keys(interfaceFrames),
+        ...Object.keys(sceneryFrames),
+      ]),
     ];
   const load = (url) => {
     if (!images.has(url))

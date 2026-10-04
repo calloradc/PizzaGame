@@ -20,7 +20,6 @@ import {
 import { towerPrices, abilityPrices, missions } from "./game/progression.js";
 import { translate } from "./game/i18n.js";
 import boardSvg from "./assets/board.svg?raw";
-import gardenUrl from "./assets/grass-tile.webp";
 import { mapThemes, mapScenery } from "./game/scenery.js";
 
 // Only this static SVG subtree is handed to the animation engine.
@@ -89,10 +88,13 @@ export function useT() {
   const language = useContext(LocaleContext);
   return (text, values) => translate(text, language, values);
 }
-export function Coins({ amount, className = "" }) {
+export function Coins({ amount, className = "", kind = "global" }) {
   return (
-    <span className={`currency ${className}`}>
-      <Icon id="coin" />
+    <span
+      className={`currency currency-${kind} ${className}`}
+      data-currency={kind}
+    >
+      <Icon id={kind === "battle" ? "coin-battle" : "coin-global"} />
       <span>{Math.floor(amount || 0)}</span>
     </span>
   );
@@ -198,7 +200,7 @@ function BuildSheetContent({ view, actions, closing, onExited }) {
                       <Icon id="lock" />
                     </span>
                   ) : (
-                    <Coins amount={costs[i]} />
+                    <Coins kind="battle" amount={costs[i]} />
                   )}
                 </button>
               );
@@ -225,7 +227,10 @@ function BuildSheetContent({ view, actions, closing, onExited }) {
           >
             <Icon id={`t-${recipe.id}`} />
             {t(view.money < cost ? "Не хватает" : "Поставить ·")}{" "}
-            <Coins amount={view.money < cost ? cost - view.money : cost} />
+            <Coins
+              kind="battle"
+              amount={view.money < cost ? cost - view.money : cost}
+            />
           </button>
         </>
       ) : (
@@ -269,7 +274,7 @@ function BuildSheetContent({ view, actions, closing, onExited }) {
                     onClick={() => actions.upgrade(i)}
                   >
                     <b>
-                      {t(name)} · <Coins amount={upgradeCost} />
+                      {t(name)} · <Coins kind="battle" amount={upgradeCost} />
                     </b>
                     <small>{t(desc)}</small>
                   </button>
@@ -290,7 +295,7 @@ function BuildSheetContent({ view, actions, closing, onExited }) {
                 ) : (
                   <>
                     {t("Улучшить до {n} ·", { n: tower.level + 1 })}
-                    <Coins amount={upgradeCost} />
+                    <Coins kind="battle" amount={upgradeCost} />
                   </>
                 )}
               </button>
@@ -304,7 +309,8 @@ function BuildSheetContent({ view, actions, closing, onExited }) {
               {t("цель")}
             </button>
             <button className="sell" onClick={actions.sell}>
-              {t("Продать ·")} <Coins amount={tower.spent * 0.65} />
+              {t("Продать ·")}{" "}
+              <Coins kind="battle" amount={tower.spent * 0.65} />
             </button>
           </div>
         </>
@@ -316,6 +322,7 @@ function BuildSheetContent({ view, actions, closing, onExited }) {
 export const MapPreview = memo(function MapPreview({ index, className = "" }) {
   const map = maps[index],
     theme = mapThemes[index];
+  const roadPattern = `preview-road-${useId().replace(/:/g, "")}`;
   return (
     <svg
       className={`map-preview ${className}`}
@@ -323,13 +330,23 @@ export const MapPreview = memo(function MapPreview({ index, className = "" }) {
       aria-hidden="true"
       data-map={index}
     >
+      <defs>
+        <pattern
+          id={roadPattern}
+          width="96"
+          height="96"
+          patternUnits="userSpaceOnUse"
+        >
+          <image href={theme.roadUrl} width="96" height="96" />
+        </pattern>
+      </defs>
       <rect width="450" height="450" fill={theme.ground} />
       <image
-        href={gardenUrl}
+        className="map-preview-ground"
+        href={theme.terrainUrl}
         width="450"
         height="450"
         preserveAspectRatio="xMidYMid slice"
-        style={{ filter: theme.filter }}
       />
       <g transform="translate(15 0)">
         <path
@@ -342,7 +359,7 @@ export const MapPreview = memo(function MapPreview({ index, className = "" }) {
         <path
           d={map.path}
           fill="none"
-          stroke={theme.road}
+          stroke={`url(#${roadPattern})`}
           strokeWidth="30"
           strokeLinecap="round"
         />
@@ -413,6 +430,19 @@ export const MapPreview = memo(function MapPreview({ index, className = "" }) {
   );
 });
 
+export const MapArtwork = memo(function MapArtwork({ index }) {
+  return (
+    <img
+      className="map-artwork"
+      src={mapThemes[index].previewUrl}
+      alt=""
+      aria-hidden="true"
+      draggable="false"
+      data-map={index}
+    />
+  );
+});
+
 function RewardOffer({ view, actions, compact = false }) {
   const t = useT();
   return (
@@ -428,7 +458,7 @@ function RewardOffer({ view, actions, compact = false }) {
       onClick={() => actions.watchAd("wallet")}
     >
       <Icon id="reward" />
-      <span className="ad-play">▶</span>
+      <Icon id="ad-video" className="ad-play" />
       <Coins amount={80} />
       {view.shopCooldown > 0 && <small>{view.shopCooldown}s</small>}
     </button>
@@ -448,7 +478,13 @@ function Intro({ view, actions }) {
             <b>PATROL</b>
           </span>
         </span>
-        <Coins amount={view.meta.wallet} className="wallet" />
+        <button
+          className="wallet wallet-button"
+          aria-label={t("Как заработать валюту")}
+          onClick={() => actions.showModal("economy")}
+        >
+          <Coins amount={view.meta.wallet} />
+        </button>
         <button
           className="iconbtn"
           aria-label={t("Настройки")}
@@ -460,10 +496,17 @@ function Intro({ view, actions }) {
       <div className="lobby-layout">
         <div className="map-stage">
           <div className="map-stage-frame" key={view.chosenMap}>
-            <MapPreview index={view.chosenMap || 0} />
+            <MapArtwork index={view.chosenMap || 0} />
           </div>
           <div className="map-stage-title">
-            <Icon id="flag" />
+            <button
+              className="route-preview-button"
+              aria-label={t("Схема карты")}
+              title={t("Схема карты")}
+              onClick={() => actions.showModal("mapinfo")}
+            >
+              <Icon id="mode-map" />
+            </button>
             <h1>{t(maps[view.chosenMap || 0].name)}</h1>
           </div>
           <span className="map-record" title={t("Рекорд")}>
@@ -483,9 +526,9 @@ function Intro({ view, actions }) {
                 title={t(map.name)}
                 aria-pressed={view.chosenMap === i}
               >
-                <MapPreview index={i} />
+                <MapArtwork index={i} />
                 <span className="selection-check" aria-hidden="true">
-                  ✓
+                  <Icon id="confirm" />
                 </span>
               </button>
             ))}
@@ -554,7 +597,7 @@ function Intro({ view, actions }) {
       </div>
       <nav className="lobby-nav">
         {[
-          ["shop", "t-chili", "Магазин"],
+          ["shop", "shop-bag", "Магазин"],
           ["medals", "medal", "Задания"],
           ["help", "i-intel", "Помощь"],
         ].map(([id, icon, label]) => (
@@ -670,11 +713,7 @@ function Shop({ view, actions }) {
                 onClick={() => actions.buy(tab, itemId)}
                 aria-label={`${t("Открыть")} ${t(r.name)}`}
               >
-                {isOwned ? (
-                  <span aria-hidden="true">✓</span>
-                ) : (
-                  <Coins amount={price} />
-                )}
+                {isOwned ? <Icon id="confirm" /> : <Coins amount={price} />}
               </button>
             </article>
           );
@@ -694,7 +733,7 @@ function Shop({ view, actions }) {
           title={t("Открыть за просмотр")}
         >
           <Icon id={tab === "tower" ? `t-${item.id}` : item.icon} />
-          <span className="ad-play">▶</span>
+          <Icon id="ad-video" className="ad-play" />
           <Icon id="lock" />
           {view.unlockCooldown > 0 && <small>{view.unlockCooldown}s</small>}
         </button>
@@ -784,7 +823,9 @@ function LanguagePicker({ language, actions }) {
               >
                 <span className="language-code">{code.toUpperCase()}</span>
                 {label}
-                <span>{language === code ? "✓" : ""}</span>
+                {language === code && (
+                  <Icon id="confirm" className="language-check" />
+                )}
               </button>
             ))}
           </div>
@@ -811,10 +852,7 @@ function Settings({ view, actions }) {
           onClick={() => actions.togglePreference("sound")}
         />
       </div>
-      {[
-        ["volume", "Громкость"],
-        ["quality", "Качество эффектов"],
-      ].map(([key, label]) => (
+      {[["volume", "Громкость"]].map(([key, label]) => (
         <div className="slider-setting" key={key}>
           <label htmlFor={key}>
             {t(label)}
@@ -926,7 +964,7 @@ function Help({ actions }) {
       "Каждые 4 волны выбирай бонус, каждые 6 встречай босса. Ранний запуск следующей волны приносит +22.",
     ],
     [
-      "reward",
+      "ad-video",
       "Реклама пока имитируется. Награда выдаётся только после просмотра; окно можно закрыть без награды.",
     ],
   ];
@@ -1006,6 +1044,53 @@ export function GameModal({ view, actions }) {
   switch (view.modal) {
     case "intro":
       content = <Intro view={view} actions={actions} />;
+      break;
+    case "mapinfo":
+      content = (
+        <>
+          <h2>{t(maps[view.chosenMap || 0].name)}</h2>
+          <div className="route-preview">
+            <MapPreview index={view.chosenMap || 0} />
+          </div>
+          <button className="secondary" onClick={actions.back}>
+            {t("Назад")}
+          </button>
+        </>
+      );
+      break;
+    case "economy":
+      content = (
+        <>
+          <h2>{t("Валюта")}</h2>
+          <div className="economy-row">
+            <Icon id="coin-battle" />
+            <div>
+              <h3>{t("Жетоны кухни")}</h3>
+              <b>
+                <Coins kind="battle" amount={view.money} />
+              </b>
+              <p>{t("Враги, завершённые волны и фермы.")}</p>
+              <small>
+                {t("Строительство и улучшения. Только текущий забег.")}
+              </small>
+            </div>
+          </div>
+          <div className="economy-row">
+            <Icon id="coin-global" />
+            <div>
+              <h3>{t("Золотые монеты")}</h3>
+              <b>
+                <Coins amount={view.meta.wallet} />
+              </b>
+              <p>{t("Волны, победы, задания и рекламные подарки.")}</p>
+              <small>{t("Открывают башни и силы навсегда.")}</small>
+            </div>
+          </div>
+          <button className="primary" onClick={actions.back}>
+            {t("Понятно")}
+          </button>
+        </>
+      );
       break;
     case "shop":
       content = <Shop view={view} actions={actions} />;
@@ -1117,7 +1202,7 @@ export function GameModal({ view, actions }) {
               className="reward-button"
               onClick={() => actions.watchAd("double")}
             >
-              <Icon id="reward" />
+              <Icon id="ad-video" />
               <span>
                 {t("Удвоить награду")}
                 <small>{t("Демо-реклама")}</small>
@@ -1131,7 +1216,7 @@ export function GameModal({ view, actions }) {
                 className="reward-button"
                 onClick={() => actions.watchAd("revive")}
               >
-                <Icon id="reward" />
+                <Icon id="ad-video" />
                 {t("Вторая попытка")}
                 <small>{t("Демо-реклама")}</small>
               </button>
@@ -1160,7 +1245,7 @@ export function GameModal({ view, actions }) {
       content = (
         <div className="ad-demo">
           <div className="demo-label">{t("Демо-реклама")}</div>
-          <Icon id="reward" className="ad-gift" />
+          <Icon id="ad-video" className="ad-gift" />
           <h2>{t("Подарок от кухни")}</h2>
           <div className="ad-reward-preview">
             {view.ad.kind === "unlock" ? (
@@ -1172,11 +1257,15 @@ export function GameModal({ view, actions }) {
                       : abilities.find((a) => a.id === view.ad.item.id).icon
                   }
                 />
-                ✓
+                <Icon id="confirm" />
               </>
             ) : view.ad.kind === "wallet" || view.ad.kind === "supply" ? (
               <>
-                +<Coins amount={view.ad.kind === "wallet" ? 80 : 100} />
+                +
+                <Coins
+                  kind={view.ad.kind === "wallet" ? "global" : "battle"}
+                  amount={view.ad.kind === "wallet" ? 80 : 100}
+                />
               </>
             ) : view.ad.kind === "repair" || view.ad.kind === "revive" ? (
               <>
@@ -1184,12 +1273,12 @@ export function GameModal({ view, actions }) {
               </>
             ) : view.ad.kind === "double" ? (
               <>
-                <Icon id="coin" />
+                <Icon id="coin-global" />
                 ×2
               </>
             ) : (
               <>
-                <Icon id="blizzard" />↻
+                <Icon id="recharge" />
               </>
             )}
           </div>
@@ -1199,7 +1288,11 @@ export function GameModal({ view, actions }) {
             <Icon id="t-truffle" />
           </div>
           <div className="ad-countdown" aria-live="polite">
-            {view.ad.remaining ? t("{n} с", { n: view.ad.remaining }) : "✓"}
+            {view.ad.remaining ? (
+              t("{n} с", { n: view.ad.remaining })
+            ) : (
+              <Icon id="confirm" />
+            )}
           </div>
           <div className="ad-progress">
             <i style={{ width: `${((6 - view.ad.remaining) / 6) * 100}%` }} />
@@ -1249,7 +1342,7 @@ export function GameModal({ view, actions }) {
   );
 }
 
-export function CurrencyText({ text = "" }) {
+export function CurrencyText({ text = "", kind = "battle" }) {
   const parts = text.split(/([+]?[0-9]+\s+монет(?:ы|а)?)/gi);
   return (
     <>
@@ -1257,7 +1350,7 @@ export function CurrencyText({ text = "" }) {
         /^[+]?[0-9]+\s+монет/i.test(part) ? (
           <span key={i}>
             {part.startsWith("+") ? "+" : ""}
-            <Coins amount={parseInt(part)} />
+            <Coins kind={kind} amount={parseInt(part)} />
           </span>
         ) : (
           part

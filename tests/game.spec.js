@@ -209,7 +209,9 @@ test("release works under a subdirectory and serves no original source", async (
   expect(errors).toEqual([]);
 });
 
-test("wave completion offers a perk", async ({ page }) => {
+test("wave completion pays both currencies and offers a perk", async ({
+  page,
+}) => {
   const errors = watchErrors(page);
   const towers = Array.from({ length: 12 }, (_, pad) => ({
     pad,
@@ -226,7 +228,21 @@ test("wave completion offers a perk", async ({ page }) => {
     await page.evaluate(() => new Date(Date.now() + 1000).toISOString()),
   );
   await page.getByRole("button", { name: "Волна 4", exact: true }).click();
-  await page.clock.runFor(60_000);
+  for (let second = 0; second < 60; second++) {
+    await page.clock.runFor(1000);
+    if (await page.locator(".wave-reward-toast").count()) break;
+  }
+  await expect(
+    page.locator('.wave-reward-toast [data-currency="battle"]'),
+  ).toHaveText("66");
+  await expect(
+    page.locator('.wave-reward-toast [data-currency="global"]'),
+  ).toHaveText("13");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("pizzaMeta")).wallet,
+    ),
+  ).toBe(163);
   await expect(
     page.getByRole("heading", { name: "Добавим изюминку?" }),
   ).toBeVisible();

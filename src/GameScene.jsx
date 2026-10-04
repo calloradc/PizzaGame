@@ -2,7 +2,6 @@ import { memo, useLayoutEffect, useRef } from "react";
 import { Board } from "./components.jsx";
 import { createCamera } from "./game/camera.js";
 import { mapThemes } from "./game/scenery.js";
-import grassUrl from "./assets/grass-tile.webp";
 
 export const GameScene = memo(function GameScene({
   blocked,
@@ -36,8 +35,7 @@ export const GameScene = memo(function GameScene({
         <div
           className="world-ground"
           style={{
-            backgroundImage: `url(${grassUrl})`,
-            filter: mapThemes[map].filter,
+            backgroundImage: `url(${mapThemes[map].terrainUrl})`,
           }}
         />
         <Board />

@@ -158,7 +158,7 @@ export const modes = [
     name: "Кампания",
     note: "18 / 24 волны",
     desc: "Защити пиццерию и победи боссов.",
-    icon: "flag",
+    icon: "mode-map",
   },
   {
     id: "blitz",

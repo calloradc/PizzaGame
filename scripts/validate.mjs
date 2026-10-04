@@ -29,6 +29,7 @@ const required = [
     "mobile",
     "release",
     "game-menu",
+    "premium",
   ].map((name) => `styles/${name}.css`),
   ...[
     "towers-atlas.webp",
@@ -44,6 +45,14 @@ const required = [
     "favicon.svg",
     "rubik-regular.woff",
     "rubik-bold.woff",
+    "menu-landscape.webp",
+    "interface-atlas.webp",
+    "scenery-atlas.webp",
+    ...["sunny", "market", "cheese"].flatMap((theme) => [
+      `ground-${theme}.webp`,
+      `road-${theme}.webp`,
+      `preview-${theme}.webp`,
+    ]),
   ].map((name) => `assets/${name}`),
 ];
 for (const file of required)
@@ -63,6 +72,7 @@ for (const name of [
   "mobile",
   "release",
   "game-menu",
+  "premium",
 ]) {
   const css = fs.readFileSync(path.join(root, `styles/${name}.css`), "utf8");
   for (const match of css.matchAll(/url\(['"]?([^\)'"#]+)['"]?\)/g)) {

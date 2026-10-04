@@ -1,0 +1,702 @@
+/* Illustrated village lobby and quiet gameplay controls. */
+.release-overlay.lobby-overlay {
+  background: #18232e;
+}
+.release-overlay .lobby-modal {
+  background:
+    linear-gradient(180deg, #15233c12 0%, #131f3533 50%, #111c36b3 100%),
+    url("../assets/menu-landscape.webp") center/cover no-repeat;
+}
+.game-lobby {
+  width: min(72rem, 100%);
+  gap: 1.1rem;
+  color: #fff5df;
+}
+.game-lobby .lobby-top {
+  gap: 0.6rem;
+}
+.game-lobby .brand {
+  text-shadow:
+    0 2px 0 #713317,
+    0 4px 0 #3d271f,
+    0 7px 14px #09142a99;
+  font-size: 1.15rem;
+}
+.game-lobby .brand > svg {
+  width: 4rem;
+  height: 4rem;
+  filter: drop-shadow(0 3px 4px #19213e80);
+}
+.game-lobby .brand > span {
+  color: #fff5d4;
+  letter-spacing: 0.035em;
+}
+.game-lobby .brand b {
+  color: #ffc976;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+.game-lobby .wallet {
+  border: 0;
+  background: #1c254b9c;
+  color: #ffe9b7;
+  padding: 0.45rem 0.75rem;
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px #ffe8b933,
+    0 3px 12px #0b163040;
+}
+.wallet-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.game-lobby .iconbtn {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  width: 3rem;
+  height: 3rem;
+  filter: drop-shadow(0 3px 3px #07142f88);
+}
+.game-lobby .iconbtn > svg {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+.game-lobby .lobby-layout {
+  grid-template-columns: 1.3fr 1fr;
+  gap: 2.5rem;
+}
+.map-stage {
+  padding: 0;
+}
+.map-stage-frame {
+  width: min(100%, 54dvh);
+  aspect-ratio: 1.25;
+  border: 0;
+  border-radius: 1.65rem;
+  transform: none;
+  box-shadow:
+    0 0.6rem 1.5rem #0a163677,
+    inset 0 1px #ffffff55;
+  overflow: hidden;
+  position: relative;
+}
+.map-stage-frame:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px #ffe9bc4a;
+  pointer-events: none;
+}
+.map-artwork {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+.map-stage-title {
+  margin-top: 0.9rem;
+  gap: 0.55rem;
+}
+.map-stage h1 {
+  font-size: 1.35rem;
+  color: #fff5d9;
+  text-shadow: 0 2px 3px #101b38cc;
+}
+.route-preview-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.1rem;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+.route-preview-button > svg {
+  width: 2.2rem;
+  height: 2.2rem;
+  filter: drop-shadow(0 2px 2px #12223d99);
+}
+.map-record {
+  top: 0.55rem;
+  right: 0.55rem;
+  border: 0;
+  background: #18244e9c;
+  color: #fff0cf;
+  box-shadow: none;
+  border-radius: 0.8rem;
+  padding: 0.25rem 0.45rem;
+}
+.game-lobby .run-setup {
+  padding: 0;
+}
+.game-lobby .choices {
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.game-lobby .choice,
+.game-lobby .mode-choice {
+  border: 0;
+  background: #142244b5;
+  color: #d6dded;
+  box-shadow:
+    inset 0 1px #ffffff15,
+    0 3px 8px #0a142d22;
+}
+.game-lobby .choice.active,
+.game-lobby .mode-choice.active {
+  border: 0;
+  background: linear-gradient(145deg, #ffe4ac, #dfb978);
+  color: #614426;
+  box-shadow:
+    inset 0 1px #fff5d5,
+    0 3px 10px #15234555;
+}
+.game-lobby .map-choices .choice {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1.32;
+  border: 0;
+  padding: 0;
+  border-radius: 0.85rem;
+  box-shadow: 0 4px 10px #0b173c55;
+}
+.game-lobby .map-choices .choice.active {
+  border: 0;
+  box-shadow:
+    0 0 0 2px #f8d99c,
+    0 0 16px #ffe6a52b;
+}
+.game-lobby .map-choices .choice .map-artwork {
+  object-position: 50% 35%;
+}
+.game-lobby .selection-check {
+  right: 0.1rem;
+  bottom: 0.1rem;
+  background: none;
+  box-shadow: none;
+  border: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.selection-check > svg {
+  width: 100%;
+  height: 100%;
+}
+.game-lobby .difficulty-choices .choice {
+  min-height: 3.5rem;
+  border-radius: 0.85rem;
+}
+.game-lobby .mode-choice {
+  min-height: 4.1rem;
+  border-radius: 0.85rem;
+}
+.game-lobby .mode-choices {
+  margin-bottom: 1.3rem;
+}
+.game-lobby .play-cta {
+  background: linear-gradient(180deg, #ffb461 0%, #f68443 48%, #e16536 100%);
+  border: 0;
+  border-radius: 1.05rem;
+  box-shadow:
+    inset 0 2px 0 #ffddb5,
+    inset 0 -3px 0 #ba4b29,
+    0 5px 0 #773827,
+    0 9px 18px #07142d55;
+  color: #fff6dc;
+  font-size: 1.45rem;
+  min-height: 3.9rem;
+  padding: 0.6rem !important;
+  text-shadow: 0 2px #ab502e;
+}
+.game-lobby .resume-button {
+  background: #18274991;
+  color: #fff3ce;
+  border: 0;
+  min-height: 2rem;
+}
+.game-lobby .lobby-nav {
+  gap: 1.7rem;
+}
+.game-lobby .lobby-nav > button {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0.15rem;
+  border-radius: 0;
+  width: 3.8rem;
+  height: 3.8rem;
+  filter: drop-shadow(0 3px 4px #0b123388);
+}
+.game-lobby .lobby-nav > button > svg {
+  width: 3.4rem;
+  height: 3.4rem;
+}
+.game-lobby .lobby-nav > .reward-offer {
+  background: none;
+  border: 0;
+  width: 4.7rem;
+  height: auto;
+  box-shadow: none;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: #fff0ca;
+}
+.game-lobby .lobby-nav > .reward-offer .currency {
+  font-size: 0.7rem;
+  text-shadow: 0 1px 3px #0a193ccc;
+}
+.game-lobby .lobby-nav > .reward-offer .ad-play {
+  top: 0.2rem;
+  right: 0.3rem;
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.reward-offer > .ad-play,
+.ad-play {
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  color: inherit;
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.reward-offer {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  flex-direction: column;
+  min-height: 3.8rem;
+  gap: 0.15rem;
+  padding: 0.2rem;
+}
+.reward-offer > svg:not(.ad-play) {
+  width: 2.8rem;
+  height: 2.8rem;
+}
+.reward-offer > .currency {
+  font-size: 0.75rem;
+}
+.unlock-offer > svg:last-of-type:not(.ad-play) {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  right: 35%;
+  bottom: 0.3rem;
+}
+.shop-rewards {
+  gap: 1rem;
+  margin: 0.3rem 0 0.4rem;
+}
+.collection-card > .owned-label > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.language-check {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: auto;
+}
+/* Ability and close icons have no surrounding tile. */
+.release-game .ability,
+.release-game .ability.active,
+.release-game .ability.locked {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.release-game .ability {
+  overflow: visible;
+  height: 3.3rem;
+}
+.release-game .ability > .rasterSprite:first-child {
+  width: 2.5rem;
+  height: 2.5rem;
+  filter: drop-shadow(0 2px 2px #59725033);
+}
+.release-game .ability.active > .rasterSprite:first-child {
+  filter: drop-shadow(0 0 4px #fcbe54);
+  transform: scale(1.08);
+}
+.release-game .ability > small {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.25rem;
+}
+.release-game .ability i {
+  border-radius: 2rem;
+  bottom: -0.05rem;
+  height: 0.12rem;
+}
+.release-game .sheethead .iconbtn {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0.1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 36px;
+  min-height: 36px;
+}
+.release-game .sheethead .iconbtn > svg {
+  width: 2rem;
+  height: 2rem;
+}
+.release-game .stats .resource-stat {
+  pointer-events: auto;
+  border-color: #c2dfdf;
+  background: linear-gradient(#f3ffff, #d9efed);
+}
+/* Every optional ad is directly accessible at the edge, with no panel or trigger. */
+.release-game .battle-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  position: fixed;
+  z-index: 17;
+  top: 38%;
+  bottom: auto;
+  right: max(0.4rem, env(safe-area-inset-right));
+  transform: translateY(-25%);
+}
+.battle-rewards > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding: 0.1rem;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  width: 3rem;
+  min-height: 3.5rem;
+}
+.side-reward-art {
+  position: relative;
+  display: block;
+  width: 2.4rem;
+  height: 2.4rem;
+}
+.side-reward-art > svg:first-child {
+  width: 2.4rem;
+  height: 2.4rem;
+  filter: drop-shadow(0 2px 3px #142e4688);
+}
+.side-reward-art > .ad-badge {
+  position: absolute;
+  bottom: -0.15rem;
+  right: -0.25rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  filter: drop-shadow(0 1px 1px #18213c88);
+}
+.battle-rewards > button > small {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff9e5;
+  background: none;
+  text-shadow:
+    0 1px 2px #172748,
+    0 0 4px #172748;
+}
+.battle-rewards > button:disabled {
+  opacity: 0.42;
+}
+.battle-rewards > button:hover:not(:disabled) .side-reward-art {
+  transform: translateY(-2px);
+}
+.wave-reward-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.wave-reward-toast > svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+.wave-reward-toast > span {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+.economy-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.7rem 0 1rem;
+}
+.economy-row > svg {
+  width: 3.6rem;
+  height: 3.6rem;
+  flex-shrink: 0;
+}
+.economy-row h3 {
+  margin: 0.1rem 0 0.4rem;
+  font-size: 1rem;
+  color: #49644b;
+}
+.economy-row small {
+  color: #8b8167;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.release-overlay .economy-row p {
+  margin: 0.5rem 0;
+}
+.route-preview {
+  width: min(100%, 24rem);
+  margin: 0.5rem auto;
+  border-radius: 1rem;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+.route-preview > .map-preview {
+  width: 100%;
+  height: 100%;
+}
+.ad-countdown > svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.entryFlow {
+  animation: entry-flow 0.9s linear infinite;
+  transform-origin: 0 0;
+}
+@keyframes entry-flow {
+  from {
+    transform: translateX(-20px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes map-reveal {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+/* Only the visible pad is tinted; its transparent hit area stays transparent. */
+.release-game .pad .pad-hit {
+  fill: transparent !important;
+  stroke: none !important;
+}
+.release-game .pad .build-ring {
+  fill: none !important;
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  .game-lobby {
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: max(0.65rem, env(safe-area-inset-top)) 1rem
+      max(0.7rem, env(safe-area-inset-bottom));
+  }
+  .game-lobby .lobby-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    justify-content: center;
+  }
+  .game-lobby .brand {
+    font-size: 0.9rem;
+  }
+  .game-lobby .brand b {
+    font-size: 1.3rem;
+  }
+  .game-lobby .brand > svg {
+    width: 3rem;
+    height: 3rem;
+  }
+  .map-stage-frame {
+    width: min(100%, 43dvh);
+    height: min(27dvh, 16rem);
+    aspect-ratio: auto;
+    border-radius: 1.25rem;
+    border: 0;
+  }
+  .map-stage-title {
+    margin: 0.55rem 0 0;
+    gap: 0.35rem;
+  }
+  .map-stage h1 {
+    font-size: 1.05rem;
+  }
+  .route-preview-button {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+  .route-preview-button > svg {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+  .map-record {
+    top: 0.4rem;
+    right: 0.3rem;
+  }
+  .game-lobby .run-setup {
+    padding: 0;
+  }
+  .game-lobby .choices {
+    margin-bottom: 0.65rem;
+    gap: 0.45rem;
+  }
+  .game-lobby .map-choices .choice {
+    height: min(12dvh, 6rem);
+    border: 0;
+    border-radius: 0.65rem;
+  }
+  .game-lobby .difficulty-choices .choice {
+    min-height: 3rem;
+    border-radius: 0.7rem;
+  }
+  .game-lobby .mode-choice {
+    min-height: 3.6rem;
+    border-radius: 0.7rem;
+  }
+  .game-lobby .mode-choices {
+    margin-bottom: 0.85rem;
+  }
+  .game-lobby .play-cta {
+    min-height: 3.4rem;
+    padding: 0.5rem !important;
+    font-size: 1.35rem;
+  }
+  .game-lobby .lobby-nav {
+    gap: 1.25rem;
+  }
+  .game-lobby .lobby-nav > button {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+  .game-lobby .lobby-nav > button > svg {
+    width: 2.9rem;
+    height: 2.9rem;
+  }
+  .game-lobby .lobby-nav > .reward-offer {
+    width: 3.8rem;
+    height: auto;
+  }
+}
+@media (max-height: 700px) and (orientation: portrait) {
+  .game-lobby {
+    gap: 0.45rem;
+  }
+  .game-lobby .lobby-layout {
+    gap: 0.6rem;
+  }
+  .map-stage-frame {
+    width: min(100%, 43dvh);
+    height: 25dvh;
+  }
+  .game-lobby .map-choices .choice {
+    height: 4.6rem;
+  }
+  .game-lobby .mode-choice {
+    min-height: 3.3rem;
+  }
+  .game-lobby .play-cta {
+    min-height: 3.1rem;
+  }
+  .game-lobby .lobby-nav > button {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+  .game-lobby .lobby-nav > button > svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-lobby {
+    gap: 0.3rem;
+  }
+  .game-lobby .lobby-layout {
+    display: grid;
+    gap: 1.5rem;
+  }
+  .map-stage-frame {
+    width: min(100%, 68dvh);
+    height: 50dvh;
+    border: 0;
+    border-radius: 1rem;
+  }
+  .map-stage-title {
+    margin-top: 0.4rem;
+  }
+  .map-stage h1 {
+    font-size: 0.95rem;
+  }
+  .route-preview-button > svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .game-lobby .choices {
+    margin-bottom: 0.5rem;
+  }
+  .game-lobby .map-choices .choice {
+    height: 4rem;
+    border: 0;
+  }
+  .game-lobby .difficulty-choices .choice {
+    min-height: 2.5rem;
+  }
+  .game-lobby .mode-choice {
+    min-height: 3rem;
+  }
+  .game-lobby .mode-choices {
+    margin-bottom: 0.6rem;
+  }
+  .game-lobby .play-cta {
+    min-height: 2.8rem;
+    font-size: 1.15rem;
+    padding: 0.4rem !important;
+  }
+  .game-lobby .lobby-nav > button {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .game-lobby .lobby-nav > button > svg {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+  .game-lobby .lobby-nav > .reward-offer {
+    width: 3.3rem;
+  }
+  .game-lobby .lobby-nav > .reward-offer .currency {
+    font-size: 0.6rem;
+  }
+  .release-game .battle-rewards {
+    flex-direction: row;
+    top: 6rem;
+    right: 0.5rem;
+    gap: 0.4rem;
+    transform: none;
+  }
+  .battle-rewards > button {
+    width: 2.8rem;
+    min-height: 3.3rem;
+  }
+}
+@media (min-width: 1000px) {
+  .release-game .battle-rewards {
+    right: max(1rem, calc((100% - 67rem) / 2));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entryFlow {
+    animation: none;
+  }
+  .map-stage-frame {
+    animation-duration: 0.01ms !important;
+  }
+}

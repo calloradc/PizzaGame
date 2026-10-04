@@ -31,6 +31,7 @@ export function createGame({ root, onChange }) {
     resumeOffered = true,
     resultWin = false,
     toastText = "",
+    toastReward = null,
     banner = null,
     milestone = null,
     returnModal = null,
@@ -106,7 +107,8 @@ export function createGame({ root, onChange }) {
   delete prefs.haptic;
   prefs.language = prefs.language === "en" ? "en" : "ru";
   prefs.volume = Math.max(0, Math.min(100, Number(prefs.volume) || 0));
-  prefs.quality = Math.max(0, Math.min(100, Number(prefs.quality) || 0));
+  prefs.quality = 70;
+  prefs.fx = true;
   let S,
     locations = [],
     route = [],
@@ -221,7 +223,9 @@ export function createGame({ root, onChange }) {
     }
     const theme = mapThemes[S.map];
     $("terrain").setAttribute("fill", theme.ground);
-    $("road").setAttribute("stroke", theme.road);
+    $("road").setAttribute("stroke", "url(#roadTexture)");
+    $("roadTextureImage").setAttribute("href", theme.roadUrl);
+    $("entryArrowViewport").setAttribute("y", route[0][1] - 13);
     $("roadEdge").setAttribute("stroke", theme.edge);
     drawDecor();
     drawScene();
@@ -1772,7 +1776,7 @@ export function createGame({ root, onChange }) {
     meta.best = Math.max(meta.best, S.wave);
     saveMeta();
     S.autoTimer = 5;
-    toast("Вкусно сыграно! +" + reward);
+    toast("Вкусно сыграно!", { battle: reward, global: walletReward });
     closeSheet();
     if (S.wave >= goal() && !S.endless) {
       finish(true);
@@ -1849,6 +1853,7 @@ export function createGame({ root, onChange }) {
       aim,
       buildHighlight,
       toast: tr(toastText),
+      toastReward,
       banner,
       milestone,
       damageFlash,
@@ -1921,11 +1926,13 @@ export function createGame({ root, onChange }) {
           : null,
     });
   }
-  function toast(text) {
+  function toast(text, reward = null) {
     toastText = text;
+    toastReward = reward;
     clearTimeout(toastTimer);
     toastTimer = later(() => {
       toastText = "";
+      toastReward = null;
       renderUI();
     }, 2400);
     renderUI();
@@ -2020,6 +2027,7 @@ export function createGame({ root, onChange }) {
   function reset(map = chosenMap, diff = chosenDiff, mode = chosenMode) {
     clearSave();
     toastText = "";
+    toastReward = null;
     banner = null;
     milestone = null;
     clearTimeout(toastTimer);
@@ -2422,7 +2430,17 @@ export function createGame({ root, onChange }) {
       renderUI();
     },
     showModal(kind) {
-      if (["intel", "help", "settings", "medals", "shop"].includes(kind)) {
+      if (
+        [
+          "intel",
+          "help",
+          "settings",
+          "medals",
+          "shop",
+          "economy",
+          "mapinfo",
+        ].includes(kind)
+      ) {
         returnModal = modalKind === "intro" ? "intro" : paused ? "pause" : null;
         openModal(kind);
       }
@@ -2464,9 +2482,8 @@ export function createGame({ root, onChange }) {
     collectAd,
     setPreference(key, value) {
       if (key === "language") prefs.language = value === "en" ? "en" : "ru";
-      else if (["volume", "quality"].includes(key)) {
+      else if (key === "volume") {
         prefs[key] = Math.max(0, Math.min(100, Number(value) || 0));
-        if (key === "quality") prefs.fx = prefs.quality > 0;
       } else return;
       document.documentElement.lang = prefs.language;
       if (key === "language") {

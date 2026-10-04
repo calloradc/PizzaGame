@@ -4,7 +4,10 @@ import { maps } from "./config.js";
 export const mapThemes = [
   {
     ground: "#a9c878",
-    filter: "saturate(.85) brightness(1.04)",
+    terrainUrl: new URL("../assets/ground-sunny.webp", import.meta.url).href,
+    roadUrl: new URL("../assets/road-sunny.webp", import.meta.url).href,
+    previewUrl: new URL("../assets/preview-sunny.webp", import.meta.url).href,
+    decor: ["s-parasol", "s-flowers", "s-olive"],
     road: "#efd398",
     edge: "#789854",
     pad: "#e6efb7",
@@ -12,15 +15,21 @@ export const mapThemes = [
   },
   {
     ground: "#263b54",
-    filter: "sepia(.4) saturate(.7) hue-rotate(155deg) brightness(.44)",
+    terrainUrl: new URL("../assets/ground-market.webp", import.meta.url).href,
+    roadUrl: new URL("../assets/road-market.webp", import.meta.url).href,
+    previewUrl: new URL("../assets/preview-market.webp", import.meta.url).href,
+    decor: ["s-lantern", "s-stall", "s-jars"],
     road: "#7790a0",
-    edge: "#1c3146",
+    edge: "#b0a8cf",
     pad: "#a1bac6",
     accent: "#ffd37b",
   },
   {
     ground: "#c1b15b",
-    filter: "sepia(.65) saturate(1.05) hue-rotate(351deg) brightness(1.04)",
+    terrainUrl: new URL("../assets/ground-cheese.webp", import.meta.url).href,
+    roadUrl: new URL("../assets/road-cheese.webp", import.meta.url).href,
+    previewUrl: new URL("../assets/preview-cheese.webp", import.meta.url).href,
+    decor: ["s-wheels", "s-mill", "s-cheese-rocks"],
     road: "#f7e3ab",
     edge: "#96843e",
     pad: "#fff0ad",
@@ -39,22 +48,7 @@ export function mapScenery(index) {
     const p = path.getPointAtLength(d);
     route.push([p.x, p.y]);
   }
-  const choices =
-    index === 1
-      ? ["d-pot", "d-bench", "d-rocks", "d-fence", "d-mushrooms", "d-tree"]
-      : index === 2
-        ? ["d-daisy", "d-pot", "d-rocks", "d-mushrooms", "d-hedge"]
-        : [
-            "d-daisy",
-            "d-pink",
-            "d-pot",
-            "d-hedge",
-            "d-tree",
-            "d-bench",
-            "d-rocks",
-            "d-fence",
-            "d-mushrooms",
-          ];
+  const choices = mapThemes[index].decor;
   const objects = [];
   for (let row = -2; row <= 7; row++)
     for (let col = -2; col <= 6; col++) {
@@ -63,9 +57,8 @@ export function mapScenery(index) {
       const x = col * 90 + 30 + (seed % 19) - 9;
       const y = row * 78 + 26 + ((seed * 3) % 17) - 8;
       const id = choices[seed % choices.length];
-      const width =
-        id === "d-tree" ? 64 : id === "d-hedge" ? 58 : 38 + (seed % 10);
-      const height = id === "d-tree" ? 78 : width;
+      const width = 42 + (seed % 12);
+      const height = width;
       const clearance = Math.max(width, height) / 2;
       if (
         route.some(

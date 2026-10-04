@@ -41,7 +41,6 @@ export default function App() {
     [status, setStatus] = useState("loading");
   const [gameMenu, setGameMenu] = useState(false),
     [moreAbilities, setMoreAbilities] = useState(false);
-  const [rewardsOpen, setRewardsOpen] = useState(false);
   const presses = useRef(new Map()),
     lastActivation = useRef(new WeakMap());
   const actions = useRef(
@@ -79,7 +78,6 @@ export default function App() {
     if (view.modal) {
       setGameMenu(false);
       setMoreAbilities(false);
-      setRewardsOpen(false);
     }
     return () => document.body.classList.remove("gamePaused");
   }, [view.modal]);
@@ -120,7 +118,7 @@ export default function App() {
           <small>{Math.ceil(cooldown)}</small>
         ) : ability.id === "repair" ? (
           <small>
-            <Coins amount={80} />
+            <Coins kind="battle" amount={80} />
           </small>
         ) : null}
         <i style={{ width: `${(cooldown / ability.cool) * 100}%` }} />
@@ -168,10 +166,10 @@ export default function App() {
                 );
               const last = lastActivation.current.get(button) || 0;
               if (
-                (press &&
-                  (performance.now() - press.time > 600 ||
-                    Math.hypot(e.clientX - press.x, e.clientY - press.y) >
-                      12)) ||
+                !press ||
+                press.target.closest("button") !== button ||
+                performance.now() - press.time > 600 ||
+                Math.hypot(e.clientX - press.x, e.clientY - press.y) > 12 ||
                 performance.now() - last < 260
               ) {
                 e.preventDefault();
@@ -223,10 +221,15 @@ export default function App() {
               </div>
             </header>
             <div className="stats">
-              <div className="stat">
-                <Icon id="coin" />
+              <button
+                className="stat resource-stat"
+                aria-label={t("Жетоны кухни")}
+                title={t("Как заработать валюту")}
+                onClick={() => actions.showModal("economy")}
+              >
+                <Icon id="coin-battle" />
                 <strong id="money">{Math.floor(view.money)}</strong>
-              </div>
+              </button>
               <div className="stat">
                 <Icon id="heart" />
                 <strong id="lives">{view.lives}</strong>
@@ -305,7 +308,19 @@ export default function App() {
                 className={`toast ${view.toast ? "show" : ""}`}
                 role="status"
               >
-                <CurrencyText text={view.toast} />
+                {view.toastReward ? (
+                  <span className="wave-reward-toast">
+                    <Icon id="confirm" />
+                    <span>
+                      +<Coins kind="battle" amount={view.toastReward.battle} />
+                    </span>
+                    <span>
+                      +<Coins amount={view.toastReward.global} />
+                    </span>
+                  </span>
+                ) : (
+                  <CurrencyText text={view.toast} />
+                )}
               </div>
               <div className={`banner ${view.banner ? "show" : ""}`}>
                 <small>{t(view.banner?.sub || "")}</small>
@@ -395,7 +410,7 @@ export default function App() {
               aria-label={t("Меню игры")}
             >
               {[
-                ["shop", "reward", "Магазин"],
+                ["shop", "shop-bag", "Магазин"],
                 ["medals", "medal", "Награды"],
                 ["help", "i-intel", "Помощь"],
               ].map(([id, icon, label]) => (
@@ -415,73 +430,58 @@ export default function App() {
                 <Icon id="i-full" />
                 <span>{t("Экран")}</span>
               </button>
-              <button
-                disabled={view.running || view.adSupplyWave === view.wave}
-                onClick={() => actions.watchAd("supply")}
-              >
-                <Icon id="reward" />
-                <span>{t("Поставка +100")}</span>
-                <small>{t("Демо-реклама")}</small>
-              </button>
               <button onClick={actions.newRun}>
                 <Icon id="pizza" />
                 <span>{t("Главное меню")}</span>
               </button>
             </nav>
-            <div className={`battle-rewards ${rewardsOpen ? "expanded" : ""}`}>
-              {rewardsOpen && (
-                <div className="battle-reward-options">
-                  {[
-                    [
-                      "supply",
-                      "coin",
-                      "+100",
-                      view.running || view.adSupplyWave === view.wave,
-                      "Поставка +100",
-                    ],
-                    [
-                      "repair",
-                      "heart",
-                      "+5",
-                      view.lives >= view.maxLives ||
-                        view.adRepairWave === view.wave,
-                      "Пополнить жизни",
-                    ],
-                    [
-                      "recharge",
-                      "blizzard",
-                      "↻",
-                      !abilities.some(
-                        (a) =>
-                          view.meta.unlockedAbilities.includes(a.id) &&
-                          view.cool[a.id] > 0,
-                      ) || view.adRechargeWave === view.wave,
-                      "Перезарядить силы",
-                    ],
-                  ].map(([kind, icon, label, disabled, title]) => (
-                    <button
-                      key={kind}
-                      disabled={disabled || view.over || view.paused}
-                      aria-label={t(title)}
-                      onClick={() => actions.watchAd(kind)}
-                    >
-                      <Icon id={icon} />
-                      <b>{label}</b>
-                      <span className="ad-play">▶</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button
-                className="gift-trigger"
-                aria-label={t("Подарки")}
-                aria-expanded={rewardsOpen}
-                onClick={() => setRewardsOpen(!rewardsOpen)}
-              >
-                <Icon id="reward" />
-                <span className="ad-play">▶</span>
-              </button>
-            </div>
+            <aside
+              className="battle-rewards"
+              aria-label={t("Рекламные бонусы")}
+            >
+              {[
+                [
+                  "supply",
+                  "coin-battle",
+                  "+100",
+                  view.running || view.adSupplyWave === view.wave,
+                  "Поставка +100",
+                ],
+                [
+                  "repair",
+                  "heart",
+                  "+5",
+                  view.lives >= view.maxLives ||
+                    view.adRepairWave === view.wave,
+                  "Пополнить жизни",
+                ],
+                [
+                  "recharge",
+                  "recharge",
+                  t("Силы"),
+                  !abilities.some(
+                    (a) =>
+                      view.meta.unlockedAbilities.includes(a.id) &&
+                      view.cool[a.id] > 0,
+                  ) || view.adRechargeWave === view.wave,
+                  "Перезарядить силы",
+                ],
+              ].map(([kind, icon, label, disabled, title]) => (
+                <button
+                  key={kind}
+                  disabled={disabled || view.over || view.paused}
+                  aria-label={t(title)}
+                  title={t(title)}
+                  onClick={() => actions.watchAd(kind)}
+                >
+                  <span className="side-reward-art">
+                    <Icon id={icon} />
+                    <Icon id="ad-video" className="ad-badge" />
+                  </span>
+                  <small>{label}</small>
+                </button>
+              ))}
+            </aside>
             <BuildSheet view={view} actions={actions} />
           </main>
           <GameModal view={view} actions={actions} />

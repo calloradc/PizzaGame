@@ -39,6 +39,30 @@ async function pointOn(page, selector, x = 0, y = 0) {
 const zoom = (page) =>
   page.locator(".scene-viewport").evaluate((node) => Number(node.dataset.zoom));
 
+test("a map touch cannot activate the close button appearing under the finger", async ({
+  page,
+  context,
+}) => {
+  await start(page);
+  const client = await context.newCDPSession(page);
+  const pad = await pointOn(page, '[data-pad="0"]');
+  await touch(client, "touchStart", [pad]);
+  await touch(client, "touchEnd", []);
+  await expect(page.locator(".sheet.open")).toBeVisible();
+  const close = page.getByRole("button", { name: "Закрыть", exact: true });
+  // Some touch browsers retarget the compatibility click to the new sheet.
+  await close.dispatchEvent("click", {
+    bubbles: true,
+    detail: 1,
+    clientX: pad.x,
+    clientY: pad.y,
+  });
+  await expect(page.locator(".sheet.open")).toBeVisible();
+  await close.tap();
+  await expect(page.locator(".sheet.open")).toHaveCount(0);
+  await client.detach();
+});
+
 test("fullscreen square world, native pan/tap separation and fixed HUD", async ({
   page,
   context,
@@ -55,7 +79,7 @@ test("fullscreen square world, native pan/tap separation and fixed HUD", async (
     await page
       .locator(".world-ground")
       .evaluate((node) => getComputedStyle(node).backgroundImage),
-  ).toMatch(/grass-tile/);
+  ).toMatch(/ground-sunny/);
   await expect(page.locator(".scenery-prop").first()).toHaveAttribute(
     "href",
     /^blob:/,

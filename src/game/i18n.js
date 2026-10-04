@@ -1,5 +1,20 @@
 // Russian strings are stable keys, including content loaded from game configuration.
 const en = {
+  "Вкусно сыграно!": "Well played!",
+  "Жетоны кухни": "Kitchen tokens",
+  "Золотые монеты": "Gold coins",
+  "Как заработать валюту": "How to earn currency",
+  Валюта: "Currency",
+  "Схема карты": "Map route",
+  Силы: "Powers",
+  "Рекламные бонусы": "Video rewards",
+  "Враги, завершённые волны и фермы.": "Enemies, completed waves and farms.",
+  "Строительство и улучшения. Только текущий забег.":
+    "Build and upgrade towers. This run only.",
+  "Волны, победы, задания и рекламные подарки.":
+    "Waves, victories, missions and video gifts.",
+  "Открывают башни и силы навсегда.": "Unlock towers and powers permanently.",
+
   "Открыть за просмотр": "Unlock with a video",
   "Пополнить жизни": "Restore lives",
   "Перезарядить силы": "Recharge abilities",

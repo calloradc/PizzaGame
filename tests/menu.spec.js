@@ -10,11 +10,57 @@ async function finishAd(page) {
     .click();
 }
 
-test("map previews match battlefield paths and ground palettes; HUD is centered", async ({
+test("currencies explain their earnings and use distinct icons in shop and battle", async ({
   page,
 }) => {
   await lobby(page);
-  const filters = [];
+  await page
+    .getByRole("button", { name: "Как заработать валюту", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Жетоны кухни", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Враги, завершённые волны и фермы.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Волны, победы, задания и рекламные подарки.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Открывают башни и силы навсегда.", { exact: true }),
+  ).toBeVisible();
+  const blueIcon = await page
+    .locator('.currency[data-currency="battle"] image')
+    .getAttribute("href");
+  const goldIcon = await page
+    .locator('.currency[data-currency="global"] image')
+    .getAttribute("href");
+  expect(blueIcon).not.toBe(goldIcon);
+  await page.getByRole("button", { name: "Понятно", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Открыть кухню", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Жетоны кухни", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Валюта", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Понятно", exact: true }).click();
+  for (const button of await page.locator(".battle-rewards > button").all()) {
+    await expect(button).toBeVisible();
+    expect(
+      await button.evaluate((el) => getComputedStyle(el).backgroundColor),
+    ).toBe("rgba(0, 0, 0, 0)");
+  }
+});
+
+test("illustrated maps have matching route previews and distinct terrain, roads and scenery; HUD is centered", async ({
+  page,
+}) => {
+  await lobby(page);
+  const terrains = [];
+  const roads = [];
   for (let index = 0; index < 3; index++) {
     if (index) {
       await page
@@ -28,24 +74,48 @@ test("map previews match battlefield paths and ground palettes; HUD is centered"
         .click();
     }
     await page.locator(".map-choices .choice").nth(index).click();
+    await expect(page.locator(".map-stage .map-artwork")).toHaveAttribute(
+      "src",
+      /preview-/,
+    );
+    await page
+      .getByRole("button", { name: "Схема карты", exact: true })
+      .click();
     const preview = await page
-      .locator(".map-stage .map-preview")
+      .locator(".route-preview .map-preview")
       .evaluate((el) => ({
         path: el.querySelector("g > path").getAttribute("d"),
-        filter: getComputedStyle(el.querySelector("image")).filter,
-        road: el.querySelector("g > path:nth-child(2)").getAttribute("stroke"),
+        ground: el
+          .querySelector("image.map-preview-ground")
+          .getAttribute("href"),
+        road: el.querySelector("pattern image").getAttribute("href"),
       }));
+    await page.getByRole("button", { name: "Назад", exact: true }).click();
     await page
       .getByRole("button", { name: "Открыть кухню", exact: true })
       .click();
     await expect(page.locator("#road")).toHaveAttribute("d", preview.path);
-    await expect(page.locator("#road")).toHaveAttribute("stroke", preview.road);
+    await expect(page.locator("#roadTextureImage")).toHaveAttribute(
+      "href",
+      preview.road,
+    );
+    expect(
+      await page
+        .locator(".world-ground")
+        .evaluate((el) => getComputedStyle(el).backgroundImage),
+    ).toContain(preview.ground);
     expect(
       await page
         .locator(".world-ground")
         .evaluate((el) => getComputedStyle(el).filter),
-    ).toBe(preview.filter);
-    filters.push(preview.filter);
+    ).toBe("none");
+    terrains.push(preview.ground);
+    roads.push(preview.road);
+    expect(
+      await page
+        .locator(".entryFlow")
+        .evaluate((el) => getComputedStyle(el).animationName),
+    ).toBe("entry-flow");
     const hud = await page.locator(".stats").boundingBox();
     expect(
       Math.abs(hud.x + hud.width / 2 - page.viewportSize().width / 2),
@@ -63,7 +133,8 @@ test("map previews match battlefield paths and ground palettes; HUD is centered"
         .evaluate((el) => getComputedStyle(el).animationName),
     ).toBe("none");
   }
-  expect(new Set(filters).size).toBe(3);
+  expect(new Set(terrains).size).toBe(3);
+  expect(new Set(roads).size).toBe(3);
 });
 
 test("custom language list works with keyboard and removes vibration settings", async ({
@@ -170,13 +241,12 @@ test("battle ad repair and recharge pay once per wave and preserve their limits 
   await page.clock.pauseAt(
     await page.evaluate(() => new Date(Date.now() + 1000).toISOString()),
   );
-  await page.getByRole("button", { name: "Подарки", exact: true }).click();
+  await expect(page.locator(".battle-rewards > button")).toHaveCount(3);
   await page
     .getByRole("button", { name: "Пополнить жизни", exact: true })
     .click();
   await finishAd(page);
   await expect(page.locator("#lives")).toHaveText("17");
-  await page.getByRole("button", { name: "Подарки", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Пополнить жизни", exact: true }),
   ).toBeDisabled();
@@ -192,7 +262,6 @@ test("battle ad repair and recharge pay once per wave and preserve their limits 
   ).toBeEnabled();
   await page.reload();
   await page.getByRole("button", { name: /^Продолжить ·/ }).click();
-  await page.getByRole("button", { name: "Подарки", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Пополнить жизни", exact: true }),
   ).toBeDisabled();
