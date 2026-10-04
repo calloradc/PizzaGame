@@ -39,7 +39,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Test the production game in a browser
-        run: npm run test:browser
+        run: npm run test:browser -- --reporter=list,github
 
       - name: Upload only the production site
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
