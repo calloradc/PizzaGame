@@ -83,6 +83,15 @@ test("fullscreen square world, native pan/tap separation and fixed HUD", async (
   await page.getByRole("button", { name: /^Поставить ·/ }).click();
   await expect(page.locator("#money")).toHaveText("275");
   await expect(page.locator(".tower")).toHaveCount(1);
+  // Focusing a button in the floating sheet must not scroll the scene or its HUD.
+  expect(await page.locator(".stats").boundingBox()).toEqual(stats);
+  expect(await page.locator(".dock").boundingBox()).toEqual(dock);
+  await page.getByRole("button", { name: "Волна 1", exact: true }).click();
+  await expect(page.locator(".enemy").first()).toBeVisible();
+  const banner = await page.locator(".banner.show").boundingBox();
+  expect(banner.x).toBeGreaterThanOrEqual(0);
+  expect(banner.x + banner.width).toBeLessThanOrEqual(scene.width);
+  expect(await page.locator(".stats").boundingBox()).toEqual(stats);
   await client.detach();
 });
 

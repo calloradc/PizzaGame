@@ -12,6 +12,7 @@
   margin: 0;
   border: 0;
   display: block;
+  overflow: clip;
   background: #aaca52;
   isolation: isolate;
 }
@@ -24,7 +25,7 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  overflow: hidden;
+  overflow: clip;
   touch-action: none;
   user-select: none;
   cursor: grab;
@@ -199,6 +200,7 @@
 .scene-messages {
   position: absolute;
   inset: 0;
+  overflow: clip;
   z-index: 15;
   pointer-events: none;
 }
@@ -261,7 +263,12 @@
 .mobile-game .banner {
   top: 40%;
   left: 50%;
+  right: auto;
   width: min(340px, calc(100% - 32px));
+  transform: translateX(-50%) scale(0.9);
+}
+.mobile-game .banner.show {
+  transform: translateX(-50%) scale(1);
 }
 .mobile-game .aimhint {
   top: auto;
