@@ -1,0 +1,3 @@
+let prefs={};let ctx;export function configureAudio(p){prefs=p}
+export function haptic(pattern){if(prefs.haptic&&navigator.vibrate)navigator.vibrate(pattern)}
+export function sound(freq,time,delay=0){if(!prefs.sound)return;try{ctx??=new(window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();let o=ctx.createOscillator(),g=ctx.createGain();o.type='triangle';o.frequency.setValueAtTime(freq,ctx.currentTime+delay);o.frequency.exponentialRampToValueAtTime(Math.max(40,freq*.6),ctx.currentTime+delay+time);g.gain.setValueAtTime(.035,ctx.currentTime+delay);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+delay+time);o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+time)}catch(e){}}

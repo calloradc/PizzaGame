@@ -1,0 +1,3 @@
+Rubik
+
+Copyright (c) 2015 by Hubert & Fischer. All rights reserved. Hebrew characters (c) 2016 by Meir Sadan.
