@@ -76,6 +76,18 @@ const puddle = state.fx.at(-1);
 assert.equal(puddle.kind, "puddle");
 puddle.update(puddle, 0.25);
 assert(state.enemies[0].slow > 0);
+const reduced = createEffects({
+  getState: () => state,
+  prefs: { fx: false },
+  $: () => ({}),
+  el: () => ({ setAttribute() {}, remove() {} }),
+});
+reduced.puddle(0, 0);
+assert.equal(
+  state.fx.at(-1).kind,
+  "puddle",
+  "Reduced graphics must preserve gameplay pools",
+);
 console.log(
   "Combat priorities, boss rotation, bounded waves and gameplay effects verified.",
 );

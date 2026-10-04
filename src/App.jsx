@@ -3,14 +3,17 @@ import {
   BuildSheet,
   GameModal,
   Icon,
+  Coins,
+  CurrencyText,
+  LocaleContext,
   RasterReadyContext,
 } from "./components.jsx";
 import { prepareRasterImages } from "./game/art.js";
 import { createGame } from "./game/engine.js";
 import { haptic } from "./game/audio.js";
+import { translate } from "./game/i18n.js";
 import { abilities, events, maps } from "./game/config.js";
 import { GameScene } from "./GameScene.jsx";
-
 const initialView = {
   money: 340,
   lives: 25,
@@ -21,21 +24,26 @@ const initialView = {
   cool: {},
   perks: {},
   towers: [],
-  meta: { best: 0 },
-  prefs: {},
+  meta: {
+    best: 0,
+    unlockedTowers: [0, 1],
+    unlockedAbilities: ["bomb", "freeze"],
+    wallet: 150,
+  },
+  prefs: { language: "ru" },
   speed: 1,
   selection: null,
 };
 
 export default function App() {
-  const root = useRef(null);
-  const game = useRef(null);
-  const [view, setView] = useState(initialView);
-  const [status, setStatus] = useState("loading");
-  const [fullscreen, setFullscreen] = useState(false);
-  const [gameMenu, setGameMenu] = useState(false);
-  const [usedAbility, setUsedAbility] = useState(null);
-  const abilityTimer = useRef(null);
+  const root = useRef(null),
+    game = useRef(null);
+  const [view, setView] = useState(initialView),
+    [status, setStatus] = useState("loading");
+  const [gameMenu, setGameMenu] = useState(false),
+    [moreAbilities, setMoreAbilities] = useState(false);
+  const presses = useRef(new Map()),
+    lastActivation = useRef(new WeakMap());
   const actions = useRef(
     new Proxy(
       {},
@@ -47,124 +55,186 @@ export default function App() {
       },
     ),
   ).current;
-
+  const t = (text, values) => translate(text, view.prefs.language, values);
   useEffect(() => {
     let cancelled = false;
-    async function start() {
-      try {
-        await prepareRasterImages();
+    prepareRasterImages()
+      .then(() => {
         if (cancelled) return;
         game.current = createGame({ root: root.current, onChange: setView });
         setStatus("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         console.error("Не удалось загрузить игру", error);
         if (!cancelled) setStatus("error");
-      }
-    }
-    start();
-    const updateFullscreen = () =>
-      setFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", updateFullscreen);
+      });
     return () => {
       cancelled = true;
       game.current?.destroy();
       game.current = null;
-      clearTimeout(abilityTimer.current);
-      document.removeEventListener("fullscreenchange", updateFullscreen);
     };
   }, []);
-
   useEffect(() => {
     document.body.classList.toggle("gamePaused", Boolean(view.modal));
-    if (view.modal) setGameMenu(false);
+    if (view.modal) {
+      setGameMenu(false);
+      setMoreAbilities(false);
+    }
     return () => document.body.classList.remove("gamePaused");
   }, [view.modal]);
-
-  const useAbility = (id) => {
-    setUsedAbility(id);
-    clearTimeout(abilityTimer.current);
-    abilityTimer.current = setTimeout(() => setUsedAbility(null), 400);
-    actions.useAbility(id);
-  };
-  const questText = view.running
-    ? view.leaks === view.batchStartLeaks
-      ? "Без потерь: сохрани жизни"
-      : "Заказ провален: были потери"
-    : view.questDone
-      ? "Идеальная доставка выполнена"
-      : "Заказ: пройди следующую волну без потерь";
-  return (
-    <RasterReadyContext.Provider value={status === "ready"}>
-      <div
-        ref={root}
-        onClickCapture={(event) => {
-          if (gameMenu && !event.target.closest(".bottomnav,.menu-trigger"))
-            setGameMenu(false);
-          const button = event.target.closest("button");
-          if (button && !button.disabled) {
-            haptic(8);
-            if (view.prefs.fx && button.animate)
-              button.animate(
-                [{ filter: "brightness(1.07)" }, { filter: "brightness(1)" }],
-                { duration: 180 },
-              );
-          }
+  const visibleAbilities = moreAbilities
+    ? abilities
+    : abilities
+        .filter((a) => view.meta.unlockedAbilities.includes(a.id))
+        .slice(0, 3);
+  const abilityButton = (ability) => {
+    const cooldown = view.cool[ability.id] || 0;
+    const locked = !view.meta.unlockedAbilities.includes(ability.id);
+    const active =
+      view.aim === ability.id || (ability.id === "rally" && view.rally > 0);
+    return (
+      <button
+        key={ability.id}
+        className={`ability ${active ? "active" : ""} ${locked ? "locked" : ""}`}
+        aria-label={t(ability.name)}
+        disabled={
+          !locked &&
+          (view.over ||
+            view.paused ||
+            Boolean(view.modal) ||
+            cooldown > 0 ||
+            (ability.id === "repair" &&
+              (view.lives >= view.maxLives || view.money < 80)))
+        }
+        onClick={() => {
+          if (locked) actions.showModal("shop");
+          else actions.useAbility(ability.id);
         }}
       >
-        <main
-          className={`app mobile-game ${view.diff === 0 ? "casual" : ""} ${view.modal ? "modal-active" : ""}`}
+        <Icon id={ability.icon} />
+        <strong>{t(ability.name)}</strong>
+        <small>
+          {locked ? (
+            <Icon id="lock" />
+          ) : cooldown > 0 ? (
+            t("{n} с", { n: Math.ceil(cooldown) })
+          ) : ability.id === "repair" ? (
+            <Coins amount={80} />
+          ) : (
+            t(view.aim === ability.id ? "На карту" : "Готово!")
+          )}
+        </small>
+        <i style={{ width: `${(cooldown / ability.cool) * 100}%` }} />
+      </button>
+    );
+  };
+  return (
+    <LocaleContext.Provider value={view.prefs.language}>
+      <RasterReadyContext.Provider value={status === "ready"}>
+        <div
+          ref={root}
+          className="game-root"
+          onKeyDownCapture={(e) => {
+            if (e.repeat && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+          onPointerDownCapture={(e) => {
+            if (e.button === 0) {
+              if (presses.current.size >= 4) presses.current.clear();
+              presses.current.set(e.pointerId, {
+                time: performance.now(),
+                target: e.target,
+                x: e.clientX,
+                y: e.clientY,
+              });
+            }
+          }}
+          onPointerCancelCapture={(e) => presses.current.delete(e.pointerId)}
+          onClickCapture={(e) => {
+            const button = e.target.closest("button");
+            if (e.button > 0) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (button && e.detail > 0) {
+              const press =
+                presses.current.get(e.nativeEvent.pointerId) ||
+                [...presses.current.values()].find(
+                  (p) => p.target.closest("button") === button,
+                );
+              const last = lastActivation.current.get(button) || 0;
+              if (
+                (press &&
+                  (performance.now() - press.time > 600 ||
+                    Math.hypot(e.clientX - press.x, e.clientY - press.y) >
+                      12)) ||
+                performance.now() - last < 260
+              ) {
+                e.preventDefault();
+                e.stopPropagation();
+                presses.current.clear();
+                return;
+              }
+              lastActivation.current.set(button, performance.now());
+            }
+            presses.current.clear();
+            if (gameMenu && !e.target.closest(".bottomnav,.menu-trigger"))
+              setGameMenu(false);
+            if (button && !button.disabled) haptic(8);
+          }}
         >
-          <header className="top">
-            <button
-              className="logo menu-trigger"
-              aria-label="Меню игры"
-              aria-expanded={gameMenu}
-              onClick={() => setGameMenu(!gameMenu)}
-            >
-              <Icon id="pizza" />
-              <span className="menu-mark" aria-hidden="true">
-                ≡
-              </span>
-            </button>
-            <div className="wordmark">
-              PIZZA PATROL<small>ВКУСНАЯ ОБОРОНА</small>
-            </div>
-            <div className="toptools">
+          <main
+            inert={Boolean(view.modal) || status !== "ready"}
+            className={`app mobile-game release-game ${view.diff === 0 ? "casual" : ""} ${view.modal ? "modal-active" : ""} ${view.modal === "intro" ? "in-lobby" : ""}`}
+          >
+            <header className="top">
               <button
-                className="iconbtn"
-                aria-label="Пауза"
-                onClick={actions.pause}
+                className="logo menu-trigger"
+                aria-label={t("Меню игры")}
+                aria-expanded={gameMenu}
+                onClick={() => setGameMenu(!gameMenu)}
               >
-                <Icon id={view.paused ? "i-play" : "i-pause"} />
+                <Icon id="pizza" />
+                <span className="menu-mark" aria-hidden="true">
+                  ≡
+                </span>
               </button>
-              <button
-                className="iconbtn"
-                aria-label="Настройки"
-                onClick={() => actions.showModal("settings")}
-              >
-                <Icon id="i-gear" />
-              </button>
-            </div>
-          </header>
-          <div className="stats">
-            <div className="stat">
-              <Icon id="coin" />
-              <div>
-                <small>МОНЕТЫ</small>
+              <div className="wordmark">
+                PIZZA PATROL<small>{t(maps[view.map].name)}</small>
+              </div>
+              <div className="toptools">
+                <button
+                  className="iconbtn"
+                  aria-label={t("Пауза")}
+                  onClick={actions.pause}
+                >
+                  <Icon id="i-pause" />
+                </button>
+                <button
+                  className="iconbtn"
+                  aria-label={t("Настройки")}
+                  onClick={() => actions.showModal("settings")}
+                >
+                  <Icon id="i-gear" />
+                </button>
+              </div>
+            </header>
+            <div className="stats">
+              <div className="stat">
+                <Icon id="coin" />
                 <strong id="money">{Math.floor(view.money)}</strong>
               </div>
-            </div>
-            <div className="stat">
-              <Icon id="heart" />
-              <div>
-                <small>КУХНЯ</small>
+              <div className="stat">
+                <Icon id="heart" />
                 <strong id="lives">{view.lives}</strong>
               </div>
-            </div>
-            <div className="stat">
-              <Icon id="flag" />
-              <div>
-                <small>ВОЛНА</small>
+              <div className="stat">
+                <Icon id="flag" />
                 <strong id="wave">
                   {view.wave}
                   <span className="waveMax">
@@ -174,240 +244,221 @@ export default function App() {
                 </strong>
               </div>
             </div>
-          </div>
-          <div className="levelbar">
-            <span>
-              {view.running
-                ? `НА ПУТИ: ${view.remaining} ВРАГОВ`
-                : view.wave
-                  ? "ПЕРЕДЫШКА · СТРОЙ И УЛУЧШАЙ"
-                  : "ПОДГОТОВКА"}
-            </span>
-            <div className="line">
-              <i
-                style={{
-                  width: view.running
-                    ? `${Math.max(0, ((view.total - view.remaining) / Math.max(1, view.total)) * 100)}%`
-                    : "0%",
-                }}
-              />
-            </div>
-            <button onClick={actions.setSpeed}>×{view.speed}</button>
-          </div>
-          <GameScene
-            blocked={Boolean(view.modal) || view.paused}
-            map={view.map}
-            diff={view.diff}
-          />
-          <div
-            className={`scene-messages ${view.boss ? "has-boss" : ""}`}
-            aria-live="off"
-          >
-            <div className="maptag">
-              {String(view.map + 1).padStart(2, "0")} ·{" "}
-              {maps[view.map].name.toUpperCase()}
-            </div>
-            <div className="eventchip">
-              {view.running
-                ? events[view.event].name
-                : ["Уютно", "Классика", "Остро"][view.diff]}
-            </div>
-            <div className="chapter">
-              {view.wave
-                ? `ГЛАВА ${Math.min(4, Math.ceil(view.wave / 6))} · ${["Доставка", "Рынок", "Час пик", "Королевский пир"][Math.min(3, Math.floor((view.wave - 1) / 6))]}`
-                : ""}
-            </div>
-            <div
-              className={`bossbar ${view.boss ? "on" : ""}`}
-              data-boss={view.boss?.type}
-              data-casting={view.boss?.casting}
-              style={{ "--boss-color": view.boss?.color }}
-            >
+            <div className="levelbar">
               <span>
-                {view.boss?.name.toUpperCase() || "БОСС"}
-                {view.boss ? ` · ${Math.ceil(view.boss.hp)} HP` : ""}
-              </span>
-              <small>
-                {view.boss?.casting ? "Готовит атаку…" : view.boss?.skill}
-              </small>
-              <i
-                style={{
-                  width: view.boss
-                    ? `${Math.max(0, (view.boss.hp / view.boss.max) * 100)}%`
-                    : "0%",
-                }}
-              />
-            </div>
-            <div className="quest">
-              <span>{questText}</span>
-              <b>
                 {view.running
-                  ? "+35 монет"
-                  : view.questDone
-                    ? "+35 получено"
-                    : "+35"}
-              </b>
-            </div>
-            <div className={`aimhint ${view.aim ? "on" : ""}`}>
-              {view.aim === "bomb"
-                ? "Выбери место для соус-бомбы · нажми Соус для отмены"
-                : "Коснись дороги, чтобы разлить масло"}
-            </div>
-            <div className={`toast ${view.toast ? "show" : ""}`} role="status">
-              {view.toast}
-            </div>
-            <div className={`banner ${view.banner ? "show" : ""}`}>
-              <small>{view.banner?.sub}</small>
-              <strong>{view.banner?.title}</strong>
-            </div>
-            <div
-              key={view.damageFlash || 0}
-              className={`damageflash ${view.damageFlash ? "on" : ""}`}
-            />
-            {view.milestone && (
-              <div className="milestone">
-                {view.milestone.label}
-                <small>{view.milestone.sub}</small>
+                  ? t("{n} врагов на пути", { n: view.remaining })
+                  : t(view.wave ? "Передышка" : "Подготовка")}
+              </span>
+              <div className="line">
+                <i
+                  style={{
+                    width: view.running
+                      ? `${Math.max(0, ((view.total - view.remaining) / Math.max(1, view.total)) * 100)}%`
+                      : "0%",
+                  }}
+                />
               </div>
-            )}
-            {!view.towers.length &&
-              !view.aim &&
-              !view.toast &&
-              !view.banner && (
-                <div className="screenhint">
-                  Коснись плюса — поставим башню
-                  <small>Двигай поле пальцем · масштабируй двумя</small>
+              <button onClick={actions.setSpeed} aria-label={`×${view.speed}`}>
+                ×{view.speed}
+              </button>
+            </div>
+            <GameScene
+              blocked={Boolean(view.modal) || view.paused}
+              map={view.map}
+              diff={view.diff}
+              runId={view.runId}
+            />
+            <div className={`scene-messages ${view.boss ? "has-boss" : ""}`}>
+              <div className="maptag">
+                {t(maps[view.map].name).toUpperCase()}
+              </div>
+              {view.running && view.event > 0 && (
+                <div className="eventchip">{t(events[view.event].name)}</div>
+              )}
+              <div
+                className={`bossbar ${view.boss ? "on" : ""}`}
+                data-boss={view.boss?.type}
+                data-casting={view.boss?.casting}
+                style={{ "--boss-color": view.boss?.color }}
+              >
+                <span>{view.boss ? t(view.boss.name) : ""}</span>
+                <small>
+                  {view.boss?.casting
+                    ? t("Готовит атаку…")
+                    : t(view.boss?.skill || "")}
+                </small>
+                <i
+                  style={{
+                    width: view.boss
+                      ? `${Math.max(0, (view.boss.hp / view.boss.max) * 100)}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+              <div className={`aimhint ${view.aim ? "on" : ""}`}>
+                {t(
+                  view.aim === "bomb"
+                    ? "Выбери место для соус-бомбы"
+                    : "Коснись дороги, чтобы разлить масло",
+                )}
+              </div>
+              <div
+                className={`toast ${view.toast ? "show" : ""}`}
+                role="status"
+              >
+                <CurrencyText text={view.toast} />
+              </div>
+              <div className={`banner ${view.banner ? "show" : ""}`}>
+                <small>{t(view.banner?.sub || "")}</small>
+                <strong>{t(view.banner?.title || "")}</strong>
+              </div>
+              <div
+                key={view.damageFlash || 0}
+                className={`damageflash ${view.damageFlash ? "on" : ""}`}
+              />
+              {view.milestone && (
+                <div className="milestone">
+                  {t(view.milestone.label)}
+                  <small>
+                    <CurrencyText text={t(view.milestone.sub)} />
+                  </small>
                 </div>
               )}
-          </div>
-          <div className="dock">
-            <div className="abilities">
-              {abilities.map((ability) => {
-                const cooldown = view.cool[ability.id] || 0;
-                const active =
-                  view.aim === ability.id ||
-                  (ability.id === "rally" && view.rally > 0);
-                return (
-                  <button
-                    key={ability.id}
-                    className={`ability ${active ? "active" : ""} ${usedAbility === ability.id ? "used" : ""}`}
-                    aria-label={ability.name}
-                    disabled={
-                      view.over ||
-                      view.paused ||
-                      Boolean(view.modal) ||
-                      cooldown > 0 ||
-                      (ability.id === "repair" &&
-                        (view.lives >= view.maxLives || view.money < 80))
-                    }
-                    onClick={() => useAbility(ability.id)}
-                  >
-                    <Icon id={ability.icon} />
-                    <strong>{ability.name}</strong>
-                    <small>
-                      {cooldown > 0
-                        ? `${Math.ceil(cooldown)} с`
-                        : ability.id === "repair"
-                          ? "80 монет"
-                          : view.aim === ability.id
-                            ? "На карту"
-                            : "Готово"}
+              {!view.towers.length &&
+                !view.aim &&
+                !view.toast &&
+                !view.banner && (
+                  <div className="screenhint">
+                    {t("Коснись плюса — поставим башню")}
+                    <small className="touch-help">
+                      {t("Двигай поле пальцем · масштабируй двумя")}
                     </small>
-                    <i
-                      style={{ width: `${(cooldown / ability.cool) * 100}%` }}
-                    />
-                  </button>
-                );
-              })}
+                    <small className="mouse-help">
+                      {t("Мышь и колесо · пробел — пауза")}
+                    </small>
+                  </div>
+                )}
             </div>
-            <div className="dockactions">
-              <button
-                id="buildMode"
-                className={view.buildHighlight ? "buildModeOn" : ""}
-                onClick={actions.buildMode}
+            <div
+              className={`dock ${moreAbilities ? "abilities-expanded" : ""}`}
+            >
+              <div
+                className="abilities"
+                style={{
+                  gridTemplateColumns: `repeat(${moreAbilities ? 4 : visibleAbilities.length + 1},1fr)`,
+                }}
               >
-                <Icon id="i-build" />
-                Строить
-              </button>
-              <button id="intelBtn" onClick={() => actions.showModal("intel")}>
-                <Icon id="i-intel" />
-                Разведка
-              </button>
-              <button
-                className="wavebtn"
-                disabled={
-                  view.over ||
-                  view.paused ||
-                  Boolean(view.modal) ||
-                  (view.running && view.queueLength > 0)
-                }
-                onClick={actions.startWave}
-              >
-                <Icon id="i-play" />
-                <span>
-                  {view.running
-                    ? view.queueLength
-                      ? "Волна идёт"
-                      : "Раньше · +22"
-                    : `Волна ${view.wave + 1}`}
-                </span>
-              </button>
-            </div>
-          </div>
-          <nav
-            className={`nativefoot bottomnav ${gameMenu ? "open" : ""}`}
-            aria-label="Дополнительное меню"
-          >
-            <span className="srOnly">ЛУЧШИЙ: {view.meta.best}</span>
-            <button
-              aria-label="Награды"
-              onClick={() => actions.showModal("medals")}
-            >
-              <Icon id="medal" />
-              <span>Награды</span>
-            </button>
-            <button
-              aria-label="Помощь"
-              onClick={() => actions.showModal("help")}
-            >
-              <Icon id="i-intel" />
-              <span>Помощь</span>
-            </button>
-            <button
-              aria-label="На весь экран"
-              onClick={() => {
-                setGameMenu(false);
-                actions.fullscreen();
-              }}
-            >
-              <Icon id="i-full" />
-              <span>{fullscreen ? "Свернуть" : "Экран"}</span>
-            </button>
-          </nav>
-          <BuildSheet view={view} actions={actions} />
-        </main>
-        <GameModal view={view} actions={actions} />
-        {status !== "ready" && (
-          <div className="loading">
-            <div className="loadPizza">
-              {status === "error" ? "Кухня ещё прогревается" : "PIZZA PATROL"}
-            </div>
-            {status === "loading" ? (
-              <>
-                <div className="loadbar" />
-                <p>Разогреваем печь…</p>
-              </>
-            ) : (
-              <>
-                <p>Не удалось загрузить игру.</p>
-                <button onClick={() => location.reload()}>
-                  Попробовать снова
+                {visibleAbilities.map(abilityButton)}
+                <button
+                  className="ability more-abilities"
+                  aria-label={t("Способности")}
+                  aria-expanded={moreAbilities}
+                  onClick={() => setMoreAbilities(!moreAbilities)}
+                >
+                  <span>{moreAbilities ? "×" : "•••"}</span>
+                  <strong>{t("Ещё")}</strong>
                 </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </RasterReadyContext.Provider>
+              </div>
+              <div className="dockactions">
+                <button
+                  id="buildMode"
+                  className={view.buildHighlight ? "buildModeOn" : ""}
+                  onClick={actions.buildMode}
+                >
+                  <Icon id="i-build" />
+                  {t("Строить")}
+                </button>
+                <button
+                  id="intelBtn"
+                  onClick={() => actions.showModal("intel")}
+                >
+                  <Icon id="i-intel" />
+                  {t("Разведка")}
+                </button>
+                <button
+                  className="wavebtn"
+                  disabled={
+                    view.over ||
+                    view.paused ||
+                    Boolean(view.modal) ||
+                    (view.running && view.queueLength > 0)
+                  }
+                  onClick={actions.startWave}
+                >
+                  <Icon id="i-play" />
+                  <span>
+                    {view.running
+                      ? view.queueLength
+                        ? t("Волна")
+                        : t("Раньше · +22")
+                      : t("Волна {n}", { n: view.wave + 1 })}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <nav
+              className={`nativefoot bottomnav ${gameMenu ? "open" : ""}`}
+              aria-label={t("Меню игры")}
+            >
+              {[
+                ["shop", "reward", "Магазин"],
+                ["medals", "medal", "Награды"],
+                ["help", "i-intel", "Помощь"],
+              ].map(([id, icon, label]) => (
+                <button
+                  key={id}
+                  aria-label={t(label)}
+                  onClick={() => actions.showModal(id)}
+                >
+                  <Icon id={icon} />
+                  <span>{t(label)}</span>
+                </button>
+              ))}
+              <button
+                aria-label={t("На весь экран")}
+                onClick={actions.fullscreen}
+              >
+                <Icon id="i-full" />
+                <span>{t("Экран")}</span>
+              </button>
+              <button
+                disabled={view.running || view.adSupplyWave === view.wave}
+                onClick={() => actions.watchAd("supply")}
+              >
+                <Icon id="reward" />
+                <span>{t("Поставка +100")}</span>
+                <small>{t("Демо-реклама")}</small>
+              </button>
+              <button onClick={actions.newRun}>
+                <Icon id="pizza" />
+                <span>{t("Главное меню")}</span>
+              </button>
+            </nav>
+            <BuildSheet view={view} actions={actions} />
+          </main>
+          <GameModal view={view} actions={actions} />
+          {status !== "ready" && (
+            <div className="loading">
+              <Icon id="pizza" className="load-mascot" />
+              <div className="loadPizza">PIZZA PATROL</div>
+              {status === "loading" ? (
+                <>
+                  <div className="loadbar" />
+                  <p>{t("Разогреваем печь…")}</p>
+                </>
+              ) : (
+                <>
+                  <p>{t("Не удалось загрузить игру.")}</p>
+                  <button onClick={() => location.reload()}>
+                    {t("Попробовать снова")}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </RasterReadyContext.Provider>
+    </LocaleContext.Provider>
   );
 }

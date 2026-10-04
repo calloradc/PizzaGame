@@ -7,6 +7,9 @@ class ReleaseHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory="dist", **kwargs)
 
+    def log_message(self, *args):
+        pass
+
     def translate_path(self, path):
         if urlsplit(path).path.startswith("/pizza/"):
             path = path[len("/pizza"):]

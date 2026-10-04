@@ -1,11 +1,11 @@
 // The camera transforms the scene; gameplay remains in its original SVG coordinates.
-export const MIN_ZOOM = 0.6;
-export const MAX_ZOOM = 2.4;
-const TILE_BOARDS = 1; // One grass tile spans the square field; scenery is drawn separately.
+export const MIN_ZOOM = 0.9;
+export const MAX_ZOOM = 1.8;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export function createCamera({ viewport, onChange }) {
-  const landscape = viewport.querySelector(".landscape-pattern");
+  const world = viewport.querySelector(".camera-world");
+  let renderedSize = 0;
   let width = 0,
     height = 0,
     size = 0;
@@ -33,8 +33,8 @@ export function createCamera({ viewport, onChange }) {
   function bounded(next) {
     const zoom = clamp(next.zoom, MIN_ZOOM, MAX_ZOOM);
     const side = size * zoom;
-    const limitX = Math.max(0, (side - width) / 2) + side * 0.25;
-    const limitY = Math.max(0, (side - height) / 2) + side * 0.25;
+    const limitX = Math.max(side * 0.12, (side - width) / 2 + size * 0.08);
+    const limitY = Math.max(side * 0.12, (side - height) / 2 + size * 0.08);
     return {
       zoom,
       x: clamp(next.x, -limitX, limitX),
@@ -44,16 +44,13 @@ export function createCamera({ viewport, onChange }) {
   function render() {
     frame = 0;
     if (disposed) return;
-    const tile = size * camera.zoom * TILE_BOARDS;
-    const style = viewport.style;
-    style.setProperty("--board-size", `${size}px`);
-    style.setProperty("--camera-x", `${camera.x}px`);
-    style.setProperty("--camera-y", `${camera.y}px`);
-    style.setProperty("--camera-zoom", camera.zoom);
-    landscape?.setAttribute(
-      "patternTransform",
-      `translate(${width / 2 + camera.x - tile / 2} ${height / 2 + camera.y - tile / 2}) scale(${tile})`,
-    );
+    if (renderedSize !== size) {
+      world.style.width = world.style.height = `${size}px`;
+      renderedSize = size;
+    }
+    world.style.transform = `translate3d(calc(-50% + ${camera.x}px), calc(-50% + ${camera.y}px), 0) scale(${camera.zoom})`;
+    viewport.dataset.x = camera.x.toFixed(2);
+    viewport.dataset.y = camera.y.toFixed(2);
     viewport.dataset.zoom = camera.zoom.toFixed(4);
     onChange?.({ ...camera });
   }
@@ -79,12 +76,18 @@ export function createCamera({ viewport, onChange }) {
     if (!enabled || event.button !== 0 || event.target.closest("button"))
       return;
     if (!pointers.size) moved = suppressClick = false;
-    pointers.set(event.pointerId, local(event));
+    pointers.set(event.pointerId, {
+      ...local(event),
+      started: performance.now(),
+    });
     rebase();
   }
   function pointerMove(event) {
     if (!pointers.has(event.pointerId) || !gesture || !enabled) return;
-    pointers.set(event.pointerId, local(event));
+    pointers.set(event.pointerId, {
+      ...local(event),
+      started: pointers.get(event.pointerId).started,
+    });
     const points = [...pointers.values()];
     if (gesture.type === "pinch" && points.length >= 2) {
       const center = midpoint(...points);
@@ -117,12 +120,16 @@ export function createCamera({ viewport, onChange }) {
   function pointerUp(event) {
     if (!pointers.has(event.pointerId)) return;
     const point = local(event);
+    const held =
+      performance.now() - pointers.get(event.pointerId).started > 600;
+    if (held) suppressClick = true;
     const tap =
       enabled &&
       event.type === "pointerup" &&
       event.pointerType === "touch" &&
       pointers.size === 1 &&
       !moved &&
+      !held &&
       gesture?.type === "pan" &&
       Math.hypot(point.x - gesture.start.x, point.y - gesture.start.y) < 7;
     pointers.delete(event.pointerId);
@@ -165,7 +172,11 @@ export function createCamera({ viewport, onChange }) {
     pointers.clear();
     gesture = null;
     viewport.classList.remove("dragging");
-    update({ x: width > height ? -size * 0.22 : 0, y: 0, zoom: 1 });
+    update({
+      x: 0,
+      y: width > height && height > 600 ? -height * 0.04 : 0,
+      zoom: 1,
+    });
   }
   function resize() {
     const rect = viewport.getBoundingClientRect();
@@ -173,7 +184,7 @@ export function createCamera({ viewport, onChange }) {
     width = rect.width;
     height = rect.height;
     if (!width || !height) return;
-    size = Math.min(width, height) * 0.96;
+    size = Math.min(width * 0.96, height * (width > height ? 0.78 : 0.74), 860);
     if (!previousSize) reset();
     else {
       const ratio = size / previousSize;
@@ -181,6 +192,14 @@ export function createCamera({ viewport, onChange }) {
       rebase();
     }
   }
+  listen(viewport, "contextmenu", (e) => e.preventDefault());
+  listen(viewport, "dragstart", (e) => e.preventDefault());
+  listen(window, "blur", () => {
+    pointers.clear();
+    gesture = null;
+    suppressClick = true;
+    viewport.classList.remove("dragging");
+  });
   listen(viewport, "pointerdown", pointerDown);
   listen(window, "pointermove", pointerMove, { passive: false });
   listen(window, "pointerup", pointerUp);

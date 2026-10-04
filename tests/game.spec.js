@@ -134,7 +134,7 @@ test("classic map, specialization and all menus", async ({ page }) => {
   for (const [button, heading, close] of [
     ["Разведка", "Обычная доставка", "На кухню"],
     ["Помощь", "Всё просто", "Понятно"],
-    ["Награды", "Вкусные награды", "Назад"],
+    ["Награды", "Твои достижения", "Назад"],
   ]) {
     if (button === "Помощь" || button === "Награды")
       await page
@@ -317,10 +317,10 @@ test("defeat clears the checkpoint and permits a fresh run", async ({
 });
 
 test("failed atlas load shows retry and reload recovers", async ({ page }) => {
-  await page.route("**/assets/ammo-atlas-*.png", (route) => route.abort());
+  await page.route("**/assets/ammo-atlas-*.webp", (route) => route.abort());
   await page.goto("/");
   await expect(page.getByText("Не удалось загрузить игру.")).toBeVisible();
-  await page.unroute("**/assets/ammo-atlas-*.png");
+  await page.unroute("**/assets/ammo-atlas-*.webp");
   await page
     .getByRole("button", { name: "Попробовать снова", exact: true })
     .click();

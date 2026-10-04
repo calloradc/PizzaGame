@@ -51,9 +51,11 @@ test("fullscreen square world, native pan/tap separation and fixed HUD", async (
   await expect(page.locator("#map")).toHaveAttribute("viewBox", "0 0 450 450");
   await expect(page.locator("#rasterGround")).toHaveCount(0);
   await expect(page.locator(".camera-controls")).toHaveCount(0);
-  await expect(
-    page.locator(".landscape-pattern image").first(),
-  ).toHaveAttribute("href", /grass-tile-[\w-]+\.png$/);
+  expect(
+    await page
+      .locator(".world-ground")
+      .evaluate((node) => getComputedStyle(node).backgroundImage),
+  ).toMatch(/grass-tile/);
   await expect(page.locator(".scenery-prop").first()).toHaveAttribute(
     "href",
     /^blob:/,
@@ -127,19 +129,19 @@ test("real two-finger pinch keeps its focal point; limits and rotation without c
   ]);
   await touch(client, "touchEnd", []);
   await settle(page);
-  expect(await zoom(page)).toBeCloseTo(2, 1);
+  expect(await zoom(page)).toBeCloseTo(1.8, 1);
   const after = await logicalPoint();
   expect(after.x).toBeCloseTo(before.x, 1);
   expect(after.y).toBeCloseTo(before.y, 1);
   await expect(page.locator(".sheet.open")).toHaveCount(0);
   await page.mouse.move(195, 425);
   await page.mouse.wheel(0, -1800);
-  await expect.poll(() => zoom(page)).toBe(2.4);
+  await expect.poll(() => zoom(page)).toBe(1.8);
   for (let i = 0; i < 7; i++) {
     await page.mouse.wheel(0, 100);
     await settle(page);
   }
-  await expect.poll(() => zoom(page)).toBe(0.6);
+  await expect.poll(() => zoom(page)).toBe(0.9);
   await page.setViewportSize({ width: 844, height: 390 });
   await settle(page);
   const board = await page.locator(".camera-world").boundingBox();
@@ -150,7 +152,7 @@ test("real two-finger pinch keeps its focal point; limits and rotation without c
     width: 844,
     height: 390,
   });
-  expect(await zoom(page)).toBe(0.6);
+  expect(await zoom(page)).toBe(0.9);
   await client.detach();
 });
 
@@ -175,6 +177,14 @@ test("ability aiming uses world coordinates after pan and zoom; canceled touches
   await settle(page);
   await page.getByRole("button", { name: "Волна 1", exact: true }).click();
   await expect(page.locator(".enemy").first()).toBeVisible();
+  // This scenario exercises oil aiming; unlock it through the shop before casting.
+  await page.getByRole("button", { name: "Меню игры", exact: true }).click();
+  await page.getByRole("button", { name: "Магазин", exact: true }).click();
+  await page.getByRole("button", { name: /^Способности 2\/7/ }).click();
+  await page
+    .getByRole("button", { name: "Открыть Масло", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Назад", exact: true }).click();
   await page.getByRole("button", { name: "Масло", exact: true }).click();
   await expect(page.locator(".aimhint.on")).toBeVisible();
   await touch(client, "touchStart", [{ x: 200, y: 400 }]);

@@ -97,7 +97,7 @@ const recipes = [
     rate: 1.8,
     range: 76,
     color: "#a2bf63",
-    desc: "Слабая атака. Даёт 15 + 6 за уровень монет после каждой волны.",
+    desc: "Слабая атака. Даёт 15 + 6 за уровень ресурсов после каждой волны.",
     role: "ЭКОНОМИКА",
     branches: [
       ["Сбор урожая", "Доход после волны +65%"],
@@ -105,6 +105,84 @@ const recipes = [
     ],
   },
 ];
+recipes.push(
+  {
+    id: "garlic",
+    name: "Чеснок",
+    cost: 125,
+    damage: 11,
+    rate: 1.1,
+    range: 104,
+    color: "#c3a4df",
+    role: "СНИЖЕНИЕ БРОНИ",
+    desc: "Снимает 18% брони на 4 с. Усиливает урон всей обороны.",
+    branches: [
+      ["Чесночный туман", "Поражает группу, снижение брони 30%"],
+      ["Двойная порция", "Урон +80%, эффект длится 6 с"],
+    ],
+  },
+  {
+    id: "chili",
+    name: "Огнемёт Чили",
+    cost: 175,
+    damage: 8,
+    rate: 0.24,
+    range: 79,
+    color: "#f56b40",
+    role: "ПЛАМЯ + КОМБО",
+    desc: "Непрерывный огонь по группе. Замедленным целям +35% урона.",
+    branches: [
+      ["Обжигающий соус", "Радиус пламени +16, горение +60%"],
+      ["Жаркая смена", "Скорость +35%, дальность +18"],
+    ],
+  },
+  {
+    id: "truffle",
+    name: "Трюфель",
+    cost: 210,
+    damage: 48,
+    rate: 2.15,
+    range: 146,
+    color: "#a888d6",
+    role: "ПРОБИВАЮЩИЙ ЛУЧ",
+    desc: "Пробивает до 4 врагов вдоль дороги и игнорирует броню.",
+    branches: [
+      ["Споровый луч", "Пробивает до 7 целей"],
+      ["Точный разрез", "Урон +65%, сильнее против боссов"],
+    ],
+  },
+);
+export const modes = [
+  {
+    id: "campaign",
+    name: "Кампания",
+    note: "18 / 24 волны",
+    desc: "Защити пиццерию и победи боссов.",
+    icon: "flag",
+  },
+  {
+    id: "blitz",
+    name: "Блиц",
+    note: "12 быстрых волн",
+    desc: "Больше ресурсов, плотные атаки, меньше времени.",
+    icon: "chili",
+  },
+  {
+    id: "survival",
+    name: "Выживание",
+    note: "Без конца",
+    desc: "Каждая волна сложнее. Установи рекорд.",
+    icon: "heart",
+  },
+  {
+    id: "daily",
+    name: "Заказ дня",
+    note: "Новый каждый день",
+    desc: "Общая карта и условия. Награда +120 за победу.",
+    icon: "medal",
+  },
+];
+export const dailySeed = () => Math.floor(Date.now() / 86400000);
 const maps = [
   {
     name: "Солнечная площадь",
@@ -165,6 +243,33 @@ const maps = [
   },
 ];
 const species = {
+  onion: {
+    name: "Лук-панцирь",
+    hp: 160,
+    speed: 31,
+    reward: 14,
+    life: 2,
+    armor: 0.58,
+    desc: "При половине здоровья сбрасывает броню и ускоряется. Чеснок помогает вскрыть панцирь.",
+  },
+  popcorn: {
+    name: "Попкорн-прыгун",
+    hp: 44,
+    speed: 64,
+    reward: 8,
+    life: 1,
+    armor: 0,
+    desc: "Короткие прыжки ослабляют замедление. Огнём легче остановить целую группу.",
+  },
+  mint: {
+    name: "Мятный чародей",
+    hp: 100,
+    speed: 36,
+    reward: 16,
+    life: 2,
+    armor: 0.12,
+    desc: "Каждые 5 секунд ускоряет союзников рядом. Приоритет поддержки поможет остановить отряд.",
+  },
   tomato: {
     name: "Томат",
     hp: 48,
@@ -304,6 +409,9 @@ export function planWave(wave, diff = 0) {
     if (wave >= 5 && i % 7 === 4) type = "pepper";
     if (wave >= 6 && i % 7 === 5) type = "dough";
     if (wave >= 7 && i % 6 === 0) type = "shield";
+    if (wave >= 4 && i % 9 === 6) type = "popcorn";
+    if (wave >= 8 && i % 10 === 7) type = "onion";
+    if (wave >= 10 && i % 12 === 9) type = "mint";
     queue.push({ type, wave, elite: wave >= 9 && i % 11 === 8 });
   }
   if (wave % 6 === 0)
@@ -345,7 +453,7 @@ const perks = [
   {
     id: "income",
     name: "Щедрые гости",
-    desc: "Монеты за врагов +15%.",
+    desc: "Награда за врагов +15%.",
     icon: "coin",
   },
   {
@@ -375,7 +483,7 @@ const perks = [
   {
     id: "cash",
     name: "Чаевые шефу",
-    desc: "Получить 140 монет прямо сейчас.",
+    desc: "Получить 140 ресурсов прямо сейчас.",
     icon: "t-farm",
   },
 ];
@@ -385,6 +493,8 @@ const abilities = [
   { id: "trap", name: "Масло", icon: "trap", cool: 24 },
   { id: "rally", name: "Чили", icon: "chili", cool: 48 },
   { id: "repair", name: "Ремонт", icon: "repair", cool: 55 },
+  { id: "pulse", name: "Импульс", icon: "pulse", cool: 45 },
+  { id: "supply", name: "Поставка", icon: "reward", cool: 75 },
 ];
 
 export { recipes, maps, species, events, perks, abilities };

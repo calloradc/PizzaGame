@@ -101,18 +101,35 @@ const decorFrames = {
   "d-fence": [439, 890, 382, 332],
   "d-mushrooms": [861, 892, 385, 328],
 };
+const expansionFrames = {
+  "t-garlic": [0, 0, 418, 414],
+  "t-chili": [418, 0, 418, 414],
+  "t-truffle": [836, 0, 418, 414],
+  "e-onion": [0, 414, 418, 412],
+  "e-popcorn": [418, 414, 418, 412],
+  "e-mint": [836, 414, 418, 412],
+  lock: [0, 826, 418, 428],
+  reward: [418, 826, 418, 428],
+  pulse: [836, 826, 418, 428],
+};
 export function artFor(id) {
   id = { blizzard: "freeze", chili: "rally", "i-target": "i-full" }[id] || id;
   if (prepared.has(id)) return prepared.get(id);
+  if (expansionFrames[id])
+    return {
+      url: new URL("../assets/expansion-atlas.webp", import.meta.url).href,
+      size: [1254, 1254],
+      box: expansionFrames[id],
+    };
   if (bonusFrames[id])
     return {
-      url: new URL("../assets/bonus-atlas.png", import.meta.url).href,
+      url: new URL("../assets/bonus-atlas.webp", import.meta.url).href,
       size: [1254, 1254],
       box: bonusFrames[id],
     };
   if (decorFrames[id])
     return {
-      url: new URL("../assets/decor-atlas.png", import.meta.url).href,
+      url: new URL("../assets/decor-atlas.webp", import.meta.url).href,
       size: [1254, 1254],
       box: decorFrames[id],
     };
@@ -124,27 +141,27 @@ export function artFor(id) {
         : null;
   if (name && towerFrames[name])
     return {
-      url: new URL("../assets/towers-atlas.png", import.meta.url).href,
+      url: new URL("../assets/towers-atlas.webp", import.meta.url).href,
       size: [1536, 1024],
       box: towerFrames[name],
     };
   if (id.startsWith("e-") && enemyFrames[id.slice(2)])
     return {
-      url: new URL("../assets/enemies-atlas.png", import.meta.url).href,
+      url: new URL("../assets/enemies-atlas.webp", import.meta.url).href,
       size: [1254, 1254],
       box: enemyFrames[id.slice(2)],
     };
   let i = iconNames.indexOf(id);
   if (i >= 0)
     return {
-      url: new URL("../assets/icons-atlas.png", import.meta.url).href,
+      url: new URL("../assets/icons-atlas.webp", import.meta.url).href,
       size: [1254, 1254],
       box: frame(iconBounds[i]),
     };
   i = id.startsWith("a-") ? ammoNames.indexOf(id.slice(2)) : -1;
   if (i >= 0)
     return {
-      url: new URL("../assets/ammo-atlas.png", import.meta.url).href,
+      url: new URL("../assets/ammo-atlas.webp", import.meta.url).href,
       size: [1254, 1254],
       box: frame(ammoBounds[i]),
     };
@@ -219,6 +236,7 @@ async function prepareFrames() {
       ...iconNames,
       ...ammoNames.map((n) => "a-" + n),
       ...Object.keys(bonusFrames),
+      ...Object.keys(expansionFrames),
       ...Object.keys(decorFrames),
     ];
   const load = (url) => {
@@ -240,10 +258,11 @@ async function prepareFrames() {
         im = await load(a.url),
         [x, y, w, h] = a.box,
         canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
+      const scale = Math.min(1, 256 / Math.max(w, h));
+      canvas.width = Math.max(1, Math.round(w * scale));
+      canvas.height = Math.max(1, Math.round(h * scale));
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(im, x, y, w, h, 0, 0, w, h);
+      ctx.drawImage(im, x, y, w, h, 0, 0, canvas.width, canvas.height);
       const url = canvas.toBlob
         ? URL.createObjectURL(
             await new Promise((resolve) => canvas.toBlob(resolve, "image/png")),
@@ -251,8 +270,8 @@ async function prepareFrames() {
         : canvas.toDataURL("image/png");
       prepared.set(id, {
         url,
-        size: [w, h],
-        box: [0, 0, w, h],
+        size: [canvas.width, canvas.height],
+        box: [0, 0, canvas.width, canvas.height],
         isolated: true,
       });
     }),

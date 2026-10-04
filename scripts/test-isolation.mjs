@@ -28,7 +28,7 @@ globalThis.document = {
   },
 };
 await prepareRasterImages();
-assert.equal(crops.length, 58);
+assert.equal(crops.length, 67);
 for (const id of [
   "t-pepper",
   "t-cheese",
@@ -51,8 +51,8 @@ for (const id of [
   assert(a.size[0] < 500 && a.size[1] < 500);
 }
 console.log(
-  "58 atlas frames become independent bitmaps before scene creation.",
+  "67 atlas frames become independent bitmaps before scene creation.",
 );
 
 await prepareRasterImages();
-assert.equal(crops.length, 58, "Preparing twice must reuse existing textures");
+assert.equal(crops.length, 67, "Preparing twice must reuse existing textures");

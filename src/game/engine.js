@@ -8,8 +8,16 @@ import {
   abilities,
   planWave,
   bossForWave,
+  modes,
+  dailySeed,
 } from "./config.js";
-import { distanceSquared, selectTarget } from "./targeting.js";
+import { migrateProgress, unlock, claimMission } from "./progression.js";
+import { translate } from "./i18n.js";
+import {
+  distanceSquared,
+  selectTarget,
+  createSpatialIndex,
+} from "./targeting.js";
 import { createEffects } from "./effects.js";
 import { sound, haptic, configureAudio } from "./audio.js";
 // React owns the interface. This instance owns only the animated SVG scene.
@@ -23,7 +31,11 @@ export function createGame({ root, onChange }) {
     resultWin = false,
     toastText = "",
     banner = null,
-    milestone = null;
+    milestone = null,
+    returnModal = null,
+    ad = null,
+    adTimer = null,
+    shopTimer = null;
   let last = performance.now(),
     statsCache = new WeakMap();
   const isBoss = (enemy) => Boolean(species[enemy.type].boss);
@@ -57,7 +69,17 @@ export function createGame({ root, onChange }) {
     if (parent) parent.appendChild(n);
     return n;
   }
-  let prefs = { sound: false, fx: true, haptic: false, auto: false },
+  const spatial = createSpatialIndex();
+  const tr = (text, values) => translate(text, prefs.language, values);
+  let prefs = {
+      sound: false,
+      volume: 60,
+      fx: true,
+      quality: 70,
+      haptic: false,
+      auto: false,
+      language: "ru",
+    },
     meta = { best: 0, kills: 0, built: 0, boss: 0, wins: 0, specs: 0 },
     checkpoint = null;
   try {
@@ -70,8 +92,20 @@ export function createGame({ root, onChange }) {
       ...JSON.parse(localStorage.getItem("pizzaMeta") || "{}"),
     };
     let c = JSON.parse(localStorage.getItem("pizzaSaveV2") || "null");
-    if (c?.v === 2) checkpoint = c;
+    if (
+      c?.v === 2 &&
+      maps[c.map] &&
+      [0, 1, 2].includes(c.diff) &&
+      Array.isArray(c.towers) &&
+      Number.isFinite(c.wave) &&
+      c.wave >= 0
+    )
+      checkpoint = c;
   } catch (e) {}
+  meta = migrateProgress(meta, checkpoint);
+  prefs.language = prefs.language === "en" ? "en" : "ru";
+  prefs.volume = Math.max(0, Math.min(100, Number(prefs.volume) || 0));
+  prefs.quality = Math.max(0, Math.min(100, Number(prefs.quality) || 0));
   let S,
     locations = [],
     route = [],
@@ -88,16 +122,30 @@ export function createGame({ root, onChange }) {
     bannerTimer,
     uiClock = 0,
     chosenMap = 0,
-    chosenDiff = 0;
+    chosenDiff = 0,
+    chosenMode = "campaign";
   function goal() {
-    return S.diff === 0 ? 18 : 24;
+    return S.mode === "blitz" || S.mode === "daily"
+      ? 12
+      : S.diff === 0
+        ? 18
+        : 24;
   }
-  function fresh(map = chosenMap, diff = chosenDiff) {
+  function fresh(map = chosenMap, diff = chosenDiff, mode = chosenMode) {
     return {
       v: 2,
       map,
       diff,
-      money: diff === 0 ? 340 : diff === 1 ? 275 : 235,
+      mode,
+      runDay: dailySeed(),
+      runId:
+        globalThis.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      runWallet: 0,
+      adSupplyWave: -1,
+      revived: false,
+      doubled: false,
+      money: mode === "blitz" ? 470 : diff === 0 ? 340 : diff === 1 ? 275 : 235,
       lives: diff === 0 ? 25 : 20,
       maxLives: diff === 0 ? 25 : 20,
       wave: 0,
@@ -115,12 +163,12 @@ export function createGame({ root, onChange }) {
       total: 0,
       spawned: 0,
       over: false,
-      endless: false,
+      endless: mode === "survival",
       event: 0,
       perks: {},
       nextPerk: 4,
       perkChoices: [],
-      cool: { bomb: 0, freeze: 0, trap: 0, rally: 0, repair: 0 },
+      cool: Object.fromEntries(abilities.map((a) => [a.id, 0])),
       rally: 0,
       batchStartLives: 20,
       batchStartLeaks: 0,
@@ -131,14 +179,28 @@ export function createGame({ root, onChange }) {
   }
   S = fresh();
   configureAudio(prefs);
-  const { effect, burst, ring, puddle, lightning, float } = createEffects({
+  document.documentElement.lang = prefs.language;
+  saveMeta();
+  const {
+    effect,
+    burst,
+    ring,
+    puddle,
+    lightning,
+    float: rawFloat,
+  } = createEffects({
     getState: () => S,
     prefs,
     $,
     el,
   });
+  const float = (x, y, text, color) => rawFloat(x, y, tr(text), color);
   function fitBoard() {
     // Keep a square world at every viewport size and zoom. Never stretch the original art.
+    $("map").setAttribute(
+      "aria-label",
+      tr("Игровая карта. Нажмите на круглую площадку, чтобы построить башню."),
+    );
     $("map").setAttribute("viewBox", "0 0 450 450");
     $("world").setAttribute("transform", "translate(15 0)");
   }
@@ -166,7 +228,7 @@ export function createGame({ root, onChange }) {
           "data-pad": i,
           role: "button",
           tabindex: 0,
-          "aria-label": "Площадка " + (i + 1),
+          "aria-label": tr("Площадка {n}", { n: i + 1 }),
         },
         $("pads"),
       );
@@ -224,7 +286,7 @@ export function createGame({ root, onChange }) {
         padClick(i);
       };
       g.onkeydown = (e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (!e.repeat && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           padClick(i);
         }
@@ -382,7 +444,7 @@ export function createGame({ root, onChange }) {
       rate =
         r.rate / (1 + (t.level - 1) * 0.09) / (1 + (S.perks.speed || 0) * 0.1),
       range = (r.range + (t.level - 1) * 5) * (1 + (S.perks.range || 0) * 0.1);
-    if (t.type !== 5 && S.event === 4) range *= 0.88;
+    if (t.type !== 5 && t.type !== 9 && S.event === 4) range *= 0.88;
     if (t.branch >= 0) {
       if (t.type === 0) {
         if (t.branch === 0) {
@@ -396,6 +458,12 @@ export function createGame({ root, onChange }) {
         rate *= 1.2;
       }
       if (t.type === 4 && t.branch === 1) damage *= 1.35;
+      if (t.type === 7 && t.branch === 1) damage *= 1.8;
+      if (t.type === 8 && t.branch === 1) {
+        rate /= 1.35;
+        range += 18;
+      }
+      if (t.type === 9 && t.branch === 1) damage *= 1.65;
     }
     let aura = 0;
     for (let b of S.towers)
@@ -440,6 +508,10 @@ export function createGame({ root, onChange }) {
       S.over
     )
       return;
+    if (!meta.unlockedTowers.includes(pick)) {
+      toast("Открой рецепт в магазине");
+      return;
+    }
     let price = cost(pick);
     if (S.money < price) {
       toast("Нужно ещё " + (price - S.money) + " монет");
@@ -483,7 +555,7 @@ export function createGame({ root, onChange }) {
           transform: `translate(${x - 28} ${y - 36})`,
           role: "button",
           tabindex: 0,
-          "aria-label": recipes[t.type].name,
+          "aria-label": tr(recipes[t.type].name),
         },
         $("towers"),
       );
@@ -524,7 +596,7 @@ export function createGame({ root, onChange }) {
       padClick(t.pad);
     };
     g.onkeydown = (e) => {
-      if (e.key === "Enter") padClick(t.pad);
+      if (!e.repeat && e.key === "Enter") padClick(t.pad);
     };
   }
   function upgrade(branch) {
@@ -544,7 +616,7 @@ export function createGame({ root, onChange }) {
     t.level++;
     invalidateStats();
     if (t.level === 3) {
-      t.branch = branch ?? [0, 0, 1, 0, 0, 0, 0][t.type];
+      t.branch = branch ?? [0, 0, 1, 0, 0, 0, 0, 0, 0, 0][t.type];
       meta.specs++;
     }
     t.node.remove();
@@ -613,7 +685,7 @@ export function createGame({ root, onChange }) {
     renderUI();
   }
   function eventFor(w) {
-    return S.diff === 0
+    return S.diff === 0 && S.mode !== "daily" && S.mode !== "blitz"
       ? 0
       : w < 3 || w % 6 === 0
         ? 0
@@ -990,7 +1062,11 @@ export function createGame({ root, onChange }) {
   }
   function damage(e, amount, source, pierce = false, flash = true) {
     if (e.dead) return;
-    let a = amount * (pierce ? 1 : 1 - e.armor);
+    let a =
+      amount *
+      (pierce
+        ? 1
+        : 1 - Math.max(0, e.armor - (e.shred > 0 ? e.shredPower : 0)));
     if (e.shield > 0) {
       let shieldMult = source?.type === 4 ? 2 : 1,
         spent = Math.min(e.shield, a * shieldMult);
@@ -1047,7 +1123,7 @@ export function createGame({ root, onChange }) {
         c.setAttribute("opacity", 1 - p);
       });
     }
-    if (prefs.fx && e.type !== "dough") {
+    if (prefs.fx && S.enemies.length < 40 && e.type !== "dough") {
       let ghost = el(
         "g",
         { transform: `translate(${e.x} ${e.y})` },
@@ -1087,17 +1163,47 @@ export function createGame({ root, onChange }) {
       float(e.x, e.y - 18, "КРИТ!", "#d46235");
     }
     if (type === 5 && t.branch === 0 && isBoss(e)) d *= 2;
+    if (type === 8 && e.slow > 0) d *= 1.35;
+    if (type === 9 && t.branch === 1 && isBoss(e)) d *= 1.4;
     damage(
       e,
       d,
       t,
       type === 4 ||
+        type === 9 ||
         (type === 0 && t.branch === 1) ||
         (type === 5 && t.branch === 0),
     );
+    if (type === 7) {
+      for (const ally of t.branch === 0 ? spatial.query(e.x, e.y, 42) : [e]) {
+        if (ally.dead) continue;
+        ally.shred = t.branch === 1 ? 6 : 4;
+        ally.shredPower = t.branch === 0 ? 0.3 : 0.18;
+        if (ally !== e) damage(ally, d * 0.4, t);
+      }
+      ring(e.x, e.y, 28, "#cfb6e9");
+    }
+    if (type === 8) {
+      for (const ally of spatial.query(e.x, e.y, t.branch === 0 ? 43 : 27)) {
+        if (ally.dead) continue;
+        if (ally !== e) damage(ally, d * 0.55, t);
+        ally.burn = 1.8;
+        ally.burnDot = (6 + t.level * 2) * (t.branch === 0 ? 1.6 : 1);
+        ally.source = t;
+      }
+    }
+    if (type === 9) {
+      let count = 0;
+      for (const ally of S.enemies) {
+        if (ally.dead || ally === e || Math.abs(ally.d - e.d) > 85) continue;
+        damage(ally, d * 0.75, t, true);
+        lightning(e.x, e.y, ally.x, ally.y, "#c2a4f5");
+        if (++count >= (t.branch === 0 ? 6 : 3)) break;
+      }
+    }
     if (type === 1) {
       for (let a of S.enemies) {
-        if (a.dead || Math.hypot(a.x - e.x, a.y - e.y) > 34) continue;
+        if (a.dead || distanceSquared(a.x, a.y, e.x, e.y) > 34 ** 2) continue;
         a.slow = Math.max(a.slow, 2.2);
         a.slowPower = t.branch === 1 ? 0.4 : 0.6;
         if (a !== e) damage(a, d * 0.45, t);
@@ -1116,7 +1222,8 @@ export function createGame({ root, onChange }) {
     if (type === 3) {
       let radius = 36 + (t.level - 1) * 3 + (t.branch === 0 ? 20 : 0);
       for (let a of S.enemies) {
-        if (a.dead || Math.hypot(a.x - e.x, a.y - e.y) > radius) continue;
+        if (a.dead || distanceSquared(a.x, a.y, e.x, e.y) > radius ** 2)
+          continue;
         if (a !== e) damage(a, d * 0.8, t);
         a.burn = 2.5;
         a.burnDot = (9 + t.level * 2) * (t.branch === 0 ? 1.7 : 1);
@@ -1126,14 +1233,18 @@ export function createGame({ root, onChange }) {
       burst(e.x, e.y, "#ffe086", 7);
     }
     if (type === 4) {
-      let list = S.enemies
+      let list = spatial
+          .query(e.x, e.y, 78)
           .filter(
-            (a) => !a.dead && a !== e && Math.hypot(a.x - e.x, a.y - e.y) < 78,
+            (a) =>
+              !a.dead &&
+              a !== e &&
+              distanceSquared(a.x, a.y, e.x, e.y) < 78 ** 2,
           )
           .sort(
             (a, b) =>
-              Math.hypot(a.x - e.x, a.y - e.y) -
-              Math.hypot(b.x - e.x, b.y - e.y),
+              distanceSquared(a.x, a.y, e.x, e.y) -
+              distanceSquared(b.x, b.y, e.x, e.y),
           )
           .slice(0, t.branch === 0 ? 5 : 2),
         prev = e;
@@ -1187,7 +1298,9 @@ export function createGame({ root, onChange }) {
     );
     placeArt(
       el,
-      "a-" + st.r.id,
+      "a-" +
+        ({ garlic: "basil", chili: "oven", truffle: "sniper" }[st.r.id] ||
+          st.r.id),
       { x: -size / 2, y: -size / 2, width: size, height: size },
       n,
     );
@@ -1259,6 +1372,7 @@ export function createGame({ root, onChange }) {
   function useAbility(id) {
     if (
       !abilities.some((a) => a.id === id) ||
+      !meta.unlockedAbilities.includes(id) ||
       S.cool[id] > 0 ||
       paused ||
       modalOpen ||
@@ -1296,6 +1410,23 @@ export function createGame({ root, onChange }) {
       for (let t of S.towers) ring(...locations[t.pad], 23, "#ec894d");
       toast("Острая смена: скорость атаки +70% на 7 с");
       sound(700, 0.1);
+    }
+    if (id === "pulse") {
+      for (const enemy of S.enemies) {
+        if (enemy.dead) continue;
+        enemy.shield = 0;
+        if (enemy.shieldbar) writeAttr(enemy.shieldbar, "width", 0);
+        enemy.stun = Math.max(enemy.stun, isBoss(enemy) ? 0.4 : 1.5);
+        damage(enemy, 35 + S.wave * 4, null, true);
+      }
+      ring(210, 220, 260, "#79d5e3");
+      S.cool.pulse = 45;
+      toast("Импульс: щиты сняты, враги оглушены");
+    }
+    if (id === "supply") {
+      S.money += 65 + Math.min(85, S.wave * 5);
+      S.cool.supply = 75;
+      toast("Поставка ресурсов получена");
     }
     if (id === "repair") {
       if (S.money < 80) {
@@ -1345,14 +1476,43 @@ export function createGame({ root, onChange }) {
         let q = S.queue.shift();
         spawnEnemy(q.type, q.wave, 0, false, { elite: q.elite });
         S.spawn =
-          Math.max(0.24, 0.82 - S.wave * 0.018) * (S.event === 1 ? 0.68 : 1);
+          Math.max(0.24, 0.82 - S.wave * 0.018) *
+          (S.event === 1 ? 0.68 : 1) *
+          (S.mode === "blitz" ? 0.7 : 1);
       }
     }
-    let liveSnapshot = [...S.enemies];
-    for (let a of liveSnapshot) a.healed = 0;
-    for (let e of liveSnapshot) {
+    const crowded = S.enemies.length > 40 || prefs.quality < 35;
+    const animate = prefs.fx && !crowded;
+    const liveSnapshot = S.enemies;
+    const snapshotCount = liveSnapshot.length;
+    spatial.rebuild(liveSnapshot);
+    // A shared refillable budget caps all healer pulses at 5% health per second,
+    // including pulses that fall on different frames.
+    for (const ally of liveSnapshot)
+      ally.healBudget = Math.min(
+        ally.max * 0.01,
+        (ally.healBudget || 0) + ally.max * 0.05 * dt,
+      );
+    for (let enemyIndex = 0; enemyIndex < snapshotCount; enemyIndex++) {
+      const e = liveSnapshot[enemyIndex];
       if (e.dead) continue;
       e.age += dt;
+      e.shred = Math.max(0, (e.shred || 0) - dt);
+      if (e.type === "onion" && !e.shed && e.hp < e.max * 0.5) {
+        e.shed = true;
+        e.armor = 0;
+        e.speed *= 1.6;
+        ring(e.x, e.y, 28, "#d18fb7");
+      }
+      if (e.type === "mint") {
+        e.mintClock = (e.mintClock ?? 3) - dt;
+        if (e.mintClock <= 0) {
+          e.mintClock = 5;
+          for (const ally of spatial.query(e.x, e.y, 75))
+            ally.haste = Math.max(ally.haste, 2.5);
+          ring(e.x, e.y, 75, "#74d6bb");
+        }
+      }
       e.flash = Math.max(0, e.flash - dt);
       e.slow = Math.max(0, e.slow - dt);
       e.stun = Math.max(0, e.stun - dt);
@@ -1370,19 +1530,17 @@ export function createGame({ root, onChange }) {
       if (S.event === 2) e.hp = Math.min(e.max, e.hp + e.max * 0.015 * dt);
       if (e.type === "healer") {
         e.healClock -= dt;
-        for (let a of liveSnapshot)
-          if (
-            !a.dead &&
-            a !== e &&
-            distanceSquared(a.x, a.y, e.x, e.y) < 3600
-          ) {
-            let heal = Math.min(
-              a.max * 0.027 * dt,
-              Math.max(0, a.max * 0.05 * dt - a.healed),
-            );
+        e.healPulse = (e.healPulse || 0) + dt;
+        if (e.healPulse >= 0.2) {
+          const elapsed = e.healPulse;
+          e.healPulse = 0;
+          for (const a of spatial.query(e.x, e.y, 60)) {
+            if (a.dead || a === e) continue;
+            const heal = Math.min(a.max * 0.027 * elapsed, a.healBudget);
             a.hp = Math.min(a.max, a.hp + heal);
-            a.healed += heal;
+            a.healBudget -= heal;
           }
+        }
         if (e.healClock <= 0) {
           e.healClock = 1.6;
           ring(e.x, e.y, 60, "#87c47c");
@@ -1393,7 +1551,9 @@ export function createGame({ root, onChange }) {
           e.slow > 0
             ? isBoss(e)
               ? Math.max(0.75, e.slowPower)
-              : e.slowPower
+              : e.type === "popcorn" && e.age % 2.8 < 0.45
+                ? Math.max(0.85, e.slowPower)
+                : e.slowPower
             : 1,
         move =
           e.stun > 0 || e.casting > 0
@@ -1423,20 +1583,21 @@ export function createGame({ root, onChange }) {
         "transform",
         `translate(${(e.x + offsetX).toFixed(2)} ${(e.y + offsetY).toFixed(2)})`,
       );
-      let bob = prefs.fx && move > 0 ? Math.sin(e.d * 0.22) * 1.15 : 0;
-      let rock = prefs.fx && move > 0 ? Math.sin(e.d * 0.22) * 4.5 : 0;
+      let bob = animate && move > 0 ? Math.sin(e.d * 0.22) * 1.15 : 0;
+      let rock = animate && move > 0 ? Math.sin(e.d * 0.22) * 4.5 : 0;
       const pulse =
-        e.casting > 0 && prefs.fx
+        e.casting > 0 && animate
           ? Math.sin((e.casting / 0.85) * Math.PI) * 0.14
           : 0;
-      const appearance = prefs.fx ? 1 - birth * 0.45 : 1;
+      const appearance = animate ? 1 - birth * 0.45 : 1;
       writeAttr(
         e.art,
         "transform",
         `translate(0 ${bob.toFixed(2)}) rotate(${rock.toFixed(2)}) scale(${(face * appearance * (1 + pulse)).toFixed(3)} ${(appearance * (1 - pulse * 0.7)).toFixed(3)})`,
       );
-      const filter =
-        e.flash > 0
+      const filter = crowded
+        ? ""
+        : e.flash > 0
           ? "url(#enemyHit)"
           : e.slow > 0
             ? "drop-shadow(0 0 2px #83dfe2)"
@@ -1449,6 +1610,9 @@ export function createGame({ root, onChange }) {
         e.art.style.filter = filter;
         e.lastFilter = filter;
       }
+      writeAttr(e.node, "data-hasted", e.haste > 0 ? "true" : "false");
+      writeAttr(e.node, "data-shred", e.shred > 0 ? "true" : "false");
+      writeAttr(e.node, "data-shed", e.shed ? "true" : "false");
       writeAttr(e.node, "data-poisoned", e.poison > 0 ? "true" : "false");
       writeAttr(e.bar, "width", Math.max(0, (34 * e.hp) / e.max).toFixed(1));
       if (prefs.fx && (e.poison > 0 || e.burn > 0)) {
@@ -1475,6 +1639,7 @@ export function createGame({ root, onChange }) {
       }
     }
     S.enemies = S.enemies.filter((e) => !e.dead);
+    spatial.rebuild(S.enemies);
     for (let t of S.towers) {
       t.cd -= dt;
       t.stun = Math.max(0, (t.stun || 0) - dt);
@@ -1504,9 +1669,15 @@ export function createGame({ root, onChange }) {
         t.art.style.filter = filter;
         t.lastFilter = filter;
       }
-      if (t.stun > 0 || t.cd > 0) continue;
+      if (t.stun > 0 || t.cd > 0 || !S.enemies.length) continue;
       const [x, y] = locations[t.pad];
-      const target = selectTarget(S.enemies, x, y, stats(t).range, t.priority);
+      const target = selectTarget(
+        spatial.query(x, y, stats(t).range),
+        x,
+        y,
+        stats(t).range,
+        t.priority,
+      );
       if (target) fire(t, target);
     }
     for (let s of S.shots) {
@@ -1565,7 +1736,7 @@ export function createGame({ root, onChange }) {
       S.autoTimer -= dt;
       if (S.autoTimer <= 0) startWave();
     }
-    uiClock += dt;
+    uiClock += dt / speed;
     if (uiClock > 0.25) {
       uiClock = 0;
       renderUI();
@@ -1588,8 +1759,15 @@ export function createGame({ root, onChange }) {
       S.questDone = true;
     }
     S.money += reward;
+    const completed = [...S.rewardWaves];
     S.rewardWaves = [];
     if (S.diff === 0) S.lives = Math.min(S.maxLives, S.lives + 2);
+    const walletReward =
+      completed.reduce((total, w) => total + 8 + Math.floor(w / 3), 0) +
+      (S.questDone ? 4 : 0);
+    meta.wallet += walletReward;
+    S.runWallet += walletReward;
+    meta.records[S.mode] = Math.max(meta.records[S.mode] || 0, S.wave);
     meta.best = Math.max(meta.best, S.wave);
     saveMeta();
     S.autoTimer = 5;
@@ -1632,6 +1810,12 @@ export function createGame({ root, onChange }) {
   let damageFlash = 0;
   function renderUI() {
     if (disposed) return;
+    if (modalKind === "shop" && meta.adReadyAt > Date.now() && !shopTimer) {
+      shopTimer = later(() => {
+        shopTimer = null;
+        renderUI();
+      }, 1000);
+    }
     wake();
     const t = towerAt(selected),
       st =
@@ -1659,13 +1843,20 @@ export function createGame({ root, onChange }) {
       speed,
       aim,
       buildHighlight,
-      toast: toastText,
+      toast: tr(toastText),
       banner,
       milestone,
       damageFlash,
       modal: modalKind,
       chosenMap,
       chosenDiff,
+      chosenMode,
+      dailyMap: dailySeed() % maps.length,
+      ad: ad ? { kind: ad.kind, remaining: ad.remaining } : null,
+      shopCooldown: Math.max(
+        0,
+        Math.ceil((meta.adReadyAt - Date.now()) / 1000),
+      ),
       resultWin,
       resumeOffered,
       resume: resumeOffered ? checkpoint : null,
@@ -1746,6 +1937,13 @@ export function createGame({ root, onChange }) {
       v: 2,
       map: S.map,
       diff: S.diff,
+      mode: S.mode,
+      runDay: S.runDay,
+      runId: S.runId,
+      runWallet: S.runWallet,
+      adSupplyWave: S.adSupplyWave,
+      revived: S.revived,
+      doubled: S.doubled,
       money: S.money,
       lives: S.lives,
       maxLives: S.maxLives,
@@ -1777,7 +1975,8 @@ export function createGame({ root, onChange }) {
     } catch (e) {}
   }
   function save() {
-    if (!S.running && !S.over) writeSave(snapshot());
+    if (!S.running && !S.over && !(modalKind === "intro" && resumeOffered))
+      writeSave(snapshot());
   }
   function saveBeforeWave() {
     if (S.rewardWaves.length === 1) {
@@ -1803,9 +2002,14 @@ export function createGame({ root, onChange }) {
     modalKind = null;
     renderUI();
   }
-  function reset(map = chosenMap, diff = chosenDiff) {
+  function reset(map = chosenMap, diff = chosenDiff, mode = chosenMode) {
     clearSave();
-    S = fresh(map, diff);
+    toastText = "";
+    banner = null;
+    milestone = null;
+    clearTimeout(toastTimer);
+    clearTimeout(bannerTimer);
+    S = fresh(map, diff, mode);
     invalidateStats();
     for (const id of [
       "towers",
@@ -1834,8 +2038,16 @@ export function createGame({ root, onChange }) {
   function resumeSave() {
     const c = checkpoint;
     if (!c) return;
-    reset(c.map, c.diff);
+    resumeOffered = false;
+    reset(c.map, c.diff, c.mode || "campaign");
     for (const k of [
+      "mode",
+      "runId",
+      "runDay",
+      "runWallet",
+      "adSupplyWave",
+      "revived",
+      "doubled",
       "money",
       "lives",
       "maxLives",
@@ -1849,12 +2061,27 @@ export function createGame({ root, onChange }) {
       "cool",
     ])
       if (c[k] !== undefined) S[k] = c[k];
-    S.towers = c.towers.map((t) => ({ ...t, cd: 0, stun: 0 }));
+    S.doubled = S.doubled || (meta.doubledRuns || []).includes(S.runId);
+    S.cool = {
+      ...Object.fromEntries(abilities.map((a) => [a.id, 0])),
+      ...S.cool,
+    };
+    S.towers = c.towers
+      .filter((t) => recipes[t.type] && locations[t.pad])
+      .map((t) => ({ ...t, cd: 0, stun: 0 }));
     invalidateStats();
     S.endless = S.endless || S.wave >= goal();
     for (const t of S.towers) drawTower(t);
     buildHighlight = false;
     renderPadStates();
+    if (c.finished) {
+      S.over = true;
+      S.endless = false;
+      resultWin = Boolean(c.resultWin);
+      writeSave({ ...snapshot(), finished: true, resultWin });
+      openModal("finish");
+      return;
+    }
     save();
     renderUI();
     if (S.perkChoices.length) showPerks();
@@ -1865,17 +2092,117 @@ export function createGame({ root, onChange }) {
     S.over = true;
     setAim("");
     meta.best = Math.max(meta.best, win ? S.wave : Math.max(0, S.wave - 1));
-    if (win) meta.wins++;
+    if (win) {
+      meta.wins++;
+      meta.wallet += 60;
+      S.runWallet += 60;
+      if (
+        S.mode === "daily" &&
+        S.runDay === dailySeed() &&
+        meta.dailyClaimed !== S.runDay
+      ) {
+        meta.dailyClaimed = S.runDay;
+        meta.wallet += 120;
+        S.runWallet += 120;
+      }
+    }
     saveMeta();
     if (!win) clearSave();
     resultWin = win;
+    if (win) writeSave({ ...snapshot(), finished: true, resultWin: true });
     openModal("finish");
   }
   function intro(first = true) {
     chosenMap = 0;
     chosenDiff = 0;
+    chosenMode = "campaign";
+    returnModal = null;
     resumeOffered = first;
     openModal("intro");
+  }
+  function watchAd(kind) {
+    if (ad) return;
+    if (
+      kind === "wallet" &&
+      (modalKind !== "shop" || Date.now() < meta.adReadyAt)
+    )
+      return;
+    if (kind === "supply" && (S.over || S.running || S.adSupplyWave === S.wave))
+      return;
+    if (kind === "revive" && (!S.over || resultWin || S.revived)) return;
+    if (
+      kind === "double" &&
+      (!S.over ||
+        S.doubled ||
+        S.runWallet <= 0 ||
+        (meta.doubledRuns || []).includes(S.runId))
+    )
+      return;
+    if (!["wallet", "supply", "revive", "double"].includes(kind)) return;
+    ad = { kind, remaining: 6, previous: modalKind };
+    openModal("ad");
+    adTimer = setInterval(() => {
+      if (!ad || document.hidden) return;
+      ad.remaining = Math.max(0, ad.remaining - 1);
+      if (!ad.remaining) {
+        clearInterval(adTimer);
+        adTimer = null;
+      }
+      renderUI();
+    }, 1000);
+  }
+  function cancelAd() {
+    if (!ad) return;
+    const previous = ad.previous;
+    clearInterval(adTimer);
+    adTimer = null;
+    ad = null;
+    if (previous) openModal(previous);
+    else closeModal();
+  }
+  function collectAd() {
+    if (!ad || ad.remaining > 0) return;
+    const { kind, previous } = ad;
+    clearInterval(adTimer);
+    adTimer = null;
+    ad = null;
+    if (kind === "wallet") {
+      meta.wallet += 80;
+      meta.adReadyAt = Date.now() + 30000;
+    }
+    if (kind === "supply") {
+      S.money += 100;
+      S.adSupplyWave = S.wave;
+    }
+    if (kind === "double") {
+      meta.wallet += S.runWallet;
+      S.doubled = true;
+      meta.doubledRuns = [...(meta.doubledRuns || []), S.runId].slice(-50);
+    }
+    if (kind === "revive") {
+      S.revived = true;
+      S.over = false;
+      S.running = false;
+      S.lives = Math.min(S.maxLives, 8);
+      S.queue = [];
+      S.rewardWaves = [];
+      S.wave = Math.max(0, S.wave - 1);
+      for (const e of S.enemies) e.node.remove();
+      for (const shot of S.shots) shot.node.remove();
+      S.enemies = [];
+      S.shots = [];
+      saveMeta();
+      closeModal();
+      save();
+      return;
+    }
+    saveMeta();
+    if (previous) openModal(previous);
+    else closeModal();
+    if (S.over && resultWin)
+      writeSave({ ...snapshot(), finished: true, resultWin: true });
+    save();
+    renderUI();
   }
   function pause() {
     if (S.over || modalOpen) return;
@@ -1895,6 +2222,26 @@ export function createGame({ root, onChange }) {
       toast("Полный экран недоступен в этом браузере");
     }
   }
+  cleanups.push(
+    listen(document, "keydown", (e) => {
+      if (
+        e.repeat ||
+        e.target.closest("input,select,textarea,button,[role=button]")
+      )
+        return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (modalKind === "pause") {
+          paused = false;
+          closeModal();
+        } else if (!modalOpen) pause();
+      }
+      if (e.key === "Escape" && !modalOpen) {
+        setAim("");
+        closeSheet();
+      }
+    }),
+  );
   cleanups.push(
     listen(document, "visibilitychange", () => {
       if (document.hidden) {
@@ -1950,7 +2297,13 @@ export function createGame({ root, onChange }) {
   function loop(now) {
     if (disposed) return;
     frame = null;
-    const dt = Math.min(0.045, (now - last) / 1000);
+    const interval =
+      S.enemies.length > 40 || prefs.quality < 35 ? 1000 / 30 : 1000 / 60;
+    if (now - last < interval - 1) {
+      frame = requestAnimationFrame(loop);
+      return;
+    }
+    const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     tick(dt);
     if (frame === null && hasWork()) frame = requestAnimationFrame(loop);
@@ -1965,7 +2318,12 @@ export function createGame({ root, onChange }) {
     closeSheet,
     useAbility,
     selectRecipe(type) {
-      if (!recipes[type] || sheetKind !== "build") return;
+      if (
+        !recipes[type] ||
+        sheetKind !== "build" ||
+        !meta.unlockedTowers.includes(type)
+      )
+        return;
       pick = type;
       renderSelection();
       sound(500 + pick * 80, 0.04);
@@ -1990,26 +2348,86 @@ export function createGame({ root, onChange }) {
       renderUI();
     },
     showModal(kind) {
-      if (["intel", "help", "settings", "medals"].includes(kind))
+      if (["intel", "help", "settings", "medals", "shop"].includes(kind)) {
+        returnModal = modalKind === "intro" ? "intro" : paused ? "pause" : null;
         openModal(kind);
+      }
     },
     chooseMap(map) {
-      if (maps[map]) {
+      if (maps[map] && chosenMode !== "daily") {
         chosenMap = map;
         renderUI();
       }
     },
     chooseDiff(diff) {
-      if ([0, 1, 2].includes(diff)) {
+      if ([0, 1, 2].includes(diff) && chosenMode !== "daily") {
         chosenDiff = diff;
         renderUI();
       }
     },
-    newGame: () => reset(),
+    chooseMode(mode) {
+      if (!modes.some((m) => m.id === mode)) return;
+      chosenMode = mode;
+      if (mode === "daily") {
+        chosenMap = dailySeed() % maps.length;
+        chosenDiff = 1;
+      }
+      renderUI();
+    },
+    buy(kind, id) {
+      if (modalKind !== "shop" || !unlock(meta, kind, id)) return;
+      saveMeta();
+      renderUI();
+      sound(850, 0.08);
+    },
+    claimMission(id) {
+      if (!claimMission(meta, id)) return;
+      saveMeta();
+      renderUI();
+    },
+    watchAd,
+    cancelAd,
+    collectAd,
+    setPreference(key, value) {
+      if (key === "language") prefs.language = value === "en" ? "en" : "ru";
+      else if (["volume", "quality"].includes(key)) {
+        prefs[key] = Math.max(0, Math.min(100, Number(value) || 0));
+        if (key === "quality") prefs.fx = prefs.quality > 0;
+      } else return;
+      document.documentElement.lang = prefs.language;
+      if (key === "language") {
+        fitBoard();
+        root
+          .querySelectorAll(".pad")
+          .forEach((pad, i) =>
+            pad.setAttribute("aria-label", tr("Площадка {n}", { n: i + 1 })),
+          );
+        for (const tower of S.towers)
+          tower.node.setAttribute("aria-label", tr(recipes[tower.type].name));
+      }
+      saveMeta();
+      renderUI();
+    },
+    newGame: () => {
+      resumeOffered = false;
+      returnModal = null;
+      if (chosenMode === "daily") {
+        chosenMap = dailySeed() % maps.length;
+        chosenDiff = 1;
+      }
+      reset();
+    },
     resumeSave,
     newRun: () => intro(false),
     back() {
+      if (returnModal) {
+        const kind = returnModal;
+        returnModal = null;
+        openModal(kind);
+        return;
+      }
       if (S.over) openModal("finish");
+      else if (paused) openModal("pause");
       else closeModal();
     },
     continueGame() {
@@ -2028,7 +2446,7 @@ export function createGame({ root, onChange }) {
       save();
     },
     togglePreference(key) {
-      if (!Object.hasOwn(prefs, key)) return;
+      if (!["sound", "fx", "haptic", "auto"].includes(key)) return;
       prefs[key] = !prefs[key];
       saveMeta();
       if (key === "sound") sound(650, 0.1);
@@ -2044,6 +2462,7 @@ export function createGame({ root, onChange }) {
       saveMeta();
       disposed = true;
       cancelAnimationFrame(frame);
+      clearInterval(adTimer);
       observer?.disconnect();
       for (const cleanup of cleanups) cleanup();
       for (const timer of timers) clearTimeout(timer);

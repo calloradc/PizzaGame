@@ -2,7 +2,7 @@ export function createEffects({ getState, prefs, $, el }) {
   function effect(n, time, update, kind = "") {
     const S = getState();
     // Puddles affect combat and must survive the cosmetic particle budget.
-    if (kind !== "puddle" && S.fx.length >= 100) {
+    if (kind !== "puddle" && S.fx.length >= (S.enemies.length > 40 ? 35 : 70)) {
       n.remove();
       return;
     }
@@ -12,8 +12,11 @@ export function createEffects({ getState, prefs, $, el }) {
     const S = getState();
     if (!prefs.fx) return;
     const budget = Math.min(
-      Math.ceil(count * (S.enemies.length > 36 ? 0.65 : 1)),
-      Math.max(0, 90 - S.fx.length),
+      Math.ceil(
+        (count * (S.enemies.length > 36 ? 0.3 : 0.7) * (prefs.quality ?? 70)) /
+          100,
+      ),
+      Math.max(0, (S.enemies.length > 40 ? 30 : 60) - S.fx.length),
     );
     for (let i = 0; i < budget; i++) {
       let angle = Math.random() * 6.28,
@@ -34,6 +37,7 @@ export function createEffects({ getState, prefs, $, el }) {
   }
   function ring(x, y, r, color) {
     const S = getState();
+    if (!prefs.fx) return;
     let n = el(
       "circle",
       {
@@ -75,6 +79,7 @@ export function createEffects({ getState, prefs, $, el }) {
   }
   function lightning(x, y, a, b, color = "#b9f7f4") {
     const S = getState();
+    if (!prefs.fx) return;
     let n = el(
       "path",
       {

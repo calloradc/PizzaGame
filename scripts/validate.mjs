@@ -9,20 +9,29 @@ const required = [
   "App.jsx",
   "components.jsx",
   "GameScene.jsx",
-  ...["engine", "config", "effects", "audio", "art", "camera", "targeting"].map(
-    (name) => `game/${name}.js`,
-  ),
-  ...["game", "polish", "casual", "ultra", "mobile"].map(
+  ...[
+    "engine",
+    "config",
+    "effects",
+    "audio",
+    "art",
+    "camera",
+    "targeting",
+    "progression",
+    "i18n",
+  ].map((name) => `game/${name}.js`),
+  ...["game", "polish", "casual", "ultra", "mobile", "release"].map(
     (name) => `styles/${name}.css`,
   ),
   ...[
-    "towers-atlas.png",
-    "enemies-atlas.png",
-    "grass-tile.png",
-    "decor-atlas.png",
-    "bonus-atlas.png",
-    "icons-atlas.png",
-    "ammo-atlas.png",
+    "towers-atlas.webp",
+    "enemies-atlas.webp",
+    "grass-tile.webp",
+    "decor-atlas.webp",
+    "bonus-atlas.webp",
+    "expansion-atlas.webp",
+    "icons-atlas.webp",
+    "ammo-atlas.webp",
     "sprites.svg",
     "board.svg",
     "favicon.svg",
@@ -39,7 +48,7 @@ for (const file of fs.readdirSync(path.join(root, "game"))) {
   if (file.endsWith(".js"))
     execFileSync(process.execPath, ["--check", path.join(root, "game", file)]);
 }
-for (const name of ["game", "polish", "casual", "ultra", "mobile"]) {
+for (const name of ["game", "polish", "casual", "ultra", "mobile", "release"]) {
   const css = fs.readFileSync(path.join(root, `styles/${name}.css`), "utf8");
   for (const match of css.matchAll(/url\(['"]?([^\)'"#]+)['"]?\)/g)) {
     assert(

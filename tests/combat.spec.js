@@ -97,7 +97,7 @@ test("dough splits into two moving crumbs and animated halves", async ({
 }) => {
   await restore(page, {
     wave: 5,
-    towers: [tower(0, 5, 5)],
+    towers: [{ ...tower(0, 5, 5), priority: 1 }],
     perks: { damage: 10 },
   });
   await page.getByRole("button", { name: "Волна 6", exact: true }).click();
@@ -184,6 +184,7 @@ test("idle and paused gameplay stop requesting animation frames; cooldowns still
         callback(time);
       });
   });
+  await page.getByRole("button", { name: "Способности", exact: true }).click();
   const repair = page.getByRole("button", { name: "Ремонт", exact: true });
   await expect(repair).toBeDisabled();
   await page.clock.runFor(6000);

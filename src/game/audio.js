@@ -7,7 +7,7 @@ export function haptic(pattern) {
   if (prefs.haptic && navigator.vibrate) navigator.vibrate(pattern);
 }
 export function sound(freq, time, delay = 0) {
-  if (!prefs.sound) return;
+  if (!prefs.sound || prefs.volume === 0) return;
   try {
     ctx ??= new (window.AudioContext || window.webkitAudioContext)();
     if (ctx.state === "suspended") ctx.resume();
@@ -19,7 +19,10 @@ export function sound(freq, time, delay = 0) {
       Math.max(40, freq * 0.6),
       ctx.currentTime + delay + time,
     );
-    g.gain.setValueAtTime(0.035, ctx.currentTime + delay);
+    g.gain.setValueAtTime(
+      (0.035 * (prefs.volume ?? 60)) / 100,
+      ctx.currentTime + delay,
+    );
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + time);
     o.connect(g);
     g.connect(ctx.destination);
