@@ -14,6 +14,8 @@ export function createCamera({ viewport, onChange }) {
     gesture = null,
     moved = false,
     suppressClick = false;
+  let touchTap = false,
+    lastTouchTap = null;
   let frame = 0,
     disposed = false;
   const pointers = new Map();
@@ -114,9 +116,41 @@ export function createCamera({ viewport, onChange }) {
   }
   function pointerUp(event) {
     if (!pointers.has(event.pointerId)) return;
+    const point = local(event);
+    const tap =
+      enabled &&
+      event.type === "pointerup" &&
+      event.pointerType === "touch" &&
+      pointers.size === 1 &&
+      !moved &&
+      gesture?.type === "pan" &&
+      Math.hypot(point.x - gesture.start.x, point.y - gesture.start.y) < 7;
     pointers.delete(event.pointerId);
     rebase();
     if (!pointers.size) viewport.classList.remove("dragging");
+    if (tap) {
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      if (!target || !viewport.contains(target) || target.closest("button"))
+        return;
+      // Some mobile Chromium versions omit the compatibility click right after a pan.
+      // Activate taps on pointerup, then discard the browser's duplicate touch click.
+      lastTouchTap = performance.now();
+      touchTap = true;
+      try {
+        target.dispatchEvent(
+          new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            detail: 1,
+            clientX: event.clientX,
+            clientY: event.clientY,
+          }),
+        );
+      } finally {
+        touchTap = false;
+      }
+    }
   }
   function zoomAt(zoom, point = { x: width / 2, y: height / 2 }) {
     const nextZoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM),
@@ -155,10 +189,18 @@ export function createCamera({ viewport, onChange }) {
     viewport,
     "click",
     (event) => {
-      if (event.target.closest("button")) return;
+      if (event.target.closest("button") || touchTap) return;
+      const nativeTouch =
+        event.pointerType === "touch" ||
+        event.sourceCapabilities?.firesTouchEvents ||
+        event.pointerType === undefined;
+      const duplicateTouch =
+        nativeTouch &&
+        lastTouchTap !== null &&
+        performance.now() - lastTouchTap < 700;
       // A native click after a drag/pinch must never select a pad or cast an ability.
       // Keyboard activation has detail=0 and remains available to SVG buttons.
-      if (suppressClick && event.detail !== 0) {
+      if ((suppressClick || duplicateTouch) && event.detail !== 0) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
