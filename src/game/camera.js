@@ -1,7 +1,7 @@
 // The camera transforms the scene; gameplay remains in its original SVG coordinates.
 export const MIN_ZOOM = 0.6;
-export const MAX_ZOOM = 3;
-const TILE_BOARDS = 2; // The generated extension places the original garden in its central half.
+export const MAX_ZOOM = 2.4;
+const TILE_BOARDS = 1; // One grass tile spans the square field; scenery is drawn separately.
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export function createCamera({ viewport, onChange }) {

@@ -52,7 +52,7 @@ const iconBounds = [
   [57, 659, 295, 892],
   [373, 660, 604, 903],
   [671, 664, 902, 895],
-  [1012, 677, 1184, 940],
+  [1009, 674, 1188, 917],
   [96, 966, 279, 1173],
   [378, 969, 580, 1165],
   [683, 953, 904, 1166],
@@ -82,9 +82,40 @@ const ammoBounds = [
 ];
 const frame = (b) => [b[0] - 3, b[1] - 3, b[2] - b[0] + 6, b[3] - b[1] + 6];
 const prepared = new Map();
+const bonusFrames = {
+  "star-gold": [24, 156, 383, 383],
+  "star-blue": [437, 168, 378, 377],
+  "i-upgrade": [880, 183, 335, 367],
+  "e-moldboss": [0, 646, 454, 487],
+  "e-chiliboss": [458, 650, 362, 488],
+  "e-general": [824, 647, 430, 491],
+};
+const decorFrames = {
+  "d-daisy": [15, 34, 391, 371],
+  "d-pink": [439, 44, 363, 369],
+  "d-pot": [864, 44, 370, 377],
+  "d-hedge": [5, 501, 405, 309],
+  "d-tree": [436, 421, 371, 417],
+  "d-bench": [866, 475, 380, 362],
+  "d-rocks": [22, 898, 389, 328],
+  "d-fence": [439, 890, 382, 332],
+  "d-mushrooms": [861, 892, 385, 328],
+};
 export function artFor(id) {
   id = { blizzard: "freeze", chili: "rally", "i-target": "i-full" }[id] || id;
   if (prepared.has(id)) return prepared.get(id);
+  if (bonusFrames[id])
+    return {
+      url: new URL("../assets/bonus-atlas.png", import.meta.url).href,
+      size: [1254, 1254],
+      box: bonusFrames[id],
+    };
+  if (decorFrames[id])
+    return {
+      url: new URL("../assets/decor-atlas.png", import.meta.url).href,
+      size: [1254, 1254],
+      box: decorFrames[id],
+    };
   let name =
     id === "pizza" || id === "shop"
       ? id
@@ -140,6 +171,18 @@ export function rasterIcon(id, cls = "") {
 export function placeArt(el, id, attrs, parent) {
   const a = artFor(id);
   if (!a) return el("use", { href: "#" + id, ...attrs }, parent);
+  // Prepared frames already have independent alpha; they need no per-instance clipping DOM.
+  if (a.isolated)
+    return el(
+      "image",
+      {
+        href: a.url,
+        "data-raster": id,
+        preserveAspectRatio: "xMidYMid meet",
+        ...attrs,
+      },
+      parent,
+    );
   const { x = 0, y = 0, width = 64, height = 64, ...rest } = attrs,
     c = "spriteClip" + ++clipSerial,
     n = el(
@@ -157,7 +200,16 @@ export function placeArt(el, id, attrs, parent) {
 
 // Convert atlas frames to independent textures before creating any scene nodes.
 // A cropped bitmap has its own alpha and bounds, so filters and transforms never see neighboring cells.
-export async function prepareRasterImages() {
+let preparing;
+export function prepareRasterImages() {
+  if (!preparing)
+    preparing = prepareFrames().catch((error) => {
+      preparing = null;
+      throw error;
+    });
+  return preparing;
+}
+async function prepareFrames() {
   const images = new Map(),
     ids = [
       ...Object.keys(towerFrames).map((n) =>
@@ -166,6 +218,8 @@ export async function prepareRasterImages() {
       ...Object.keys(enemyFrames).map((n) => "e-" + n),
       ...iconNames,
       ...ammoNames.map((n) => "a-" + n),
+      ...Object.keys(bonusFrames),
+      ...Object.keys(decorFrames),
     ];
   const load = (url) => {
     if (!images.has(url))
@@ -190,10 +244,16 @@ export async function prepareRasterImages() {
       canvas.height = h;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(im, x, y, w, h, 0, 0, w, h);
+      const url = canvas.toBlob
+        ? URL.createObjectURL(
+            await new Promise((resolve) => canvas.toBlob(resolve, "image/png")),
+          )
+        : canvas.toDataURL("image/png");
       prepared.set(id, {
-        url: canvas.toDataURL("image/png"),
+        url,
         size: [w, h],
         box: [0, 0, w, h],
+        isolated: true,
       });
     }),
   );

@@ -1,5 +1,15 @@
 import { placeArt } from "./art.js";
-import { recipes, maps, species, events, perks, abilities } from "./config.js";
+import {
+  recipes,
+  maps,
+  species,
+  events,
+  perks,
+  abilities,
+  planWave,
+  bossForWave,
+} from "./config.js";
+import { distanceSquared, selectTarget } from "./targeting.js";
 import { createEffects } from "./effects.js";
 import { sound, haptic, configureAudio } from "./audio.js";
 // React owns the interface. This instance owns only the animated SVG scene.
@@ -7,13 +17,26 @@ export function createGame({ root, onChange }) {
   const $ = (id) => root.querySelector(`#${id}`),
     NS = "http://www.w3.org/2000/svg";
   let disposed = false,
-    frame,
+    frame = null,
     modalKind = null,
     resumeOffered = true,
     resultWin = false,
     toastText = "",
     banner = null,
     milestone = null;
+  let last = performance.now(),
+    statsCache = new WeakMap();
+  const isBoss = (enemy) => Boolean(species[enemy.type].boss);
+  const invalidateStats = () => {
+    statsCache = new WeakMap();
+  };
+  function writeAttr(node, name, value) {
+    const cache =
+      node._gameAttributes || (node._gameAttributes = Object.create(null));
+    if (cache[name] === value) return;
+    cache[name] = value;
+    node.setAttribute(name, value);
+  }
   const timers = new Set();
   function later(fn, ms) {
     const timer = setTimeout(() => {
@@ -132,7 +155,6 @@ export function createGame({ root, onChange }) {
       route.push([p.x, p.y]);
     }
     $("terrain").setAttribute("fill", ["#b8d693", "#99bda0", "#d0db9a"][S.map]);
-    $("defaultDecor").style.display = S.map === 0 ? "" : "none";
     drawDecor();
     drawScene();
     $("pads").innerHTML = "";
@@ -211,128 +233,68 @@ export function createGame({ root, onChange }) {
   }
 
   function drawDecor() {
-    let group = $("mapDecor");
-    group.innerHTML = "";
-    if (S.map === 0) return;
-    let count = 0;
-    for (let y = 24; y < 440; y += 64) {
-      for (let x = 25; x < 410; x += 66) {
-        let close =
-          route.some((p) => Math.hypot(p[0] - x, p[1] - y) < 44) ||
-          locations.some((p) => Math.hypot(p[0] - x, p[1] - y) < 36);
-        if (close) continue;
-        if (count++ % 3 === 0) {
-          el(
-            "ellipse",
-            { cx: x, cy: y + 10, rx: 16, ry: 6, fill: "#769361", opacity: 0.4 },
-            group,
-          );
-          el(
-            "circle",
-            {
-              cx: x,
-              cy: y,
-              r: 13,
-              fill: S.map === 1 ? "#759b79" : "#93b36a",
-              stroke: "#649460",
-              "stroke-width": 2,
-            },
-            group,
-          );
-          el("circle", { cx: x - 4, cy: y - 3, r: 4, fill: "#bad391" }, group);
-        } else {
-          el(
-            "path",
-            { d: `M${x} ${y + 5}v-10`, stroke: "#829052", "stroke-width": 2 },
-            group,
-          );
-          for (let k = 0; k < 4; k++) {
-            let a = k * 1.57;
-            el(
-              "circle",
-              {
-                cx: x + Math.cos(a) * 3,
-                cy: y - 5 + Math.sin(a) * 3,
-                r: 2.6,
-                fill: S.map === 1 ? "#f4d38b" : "#ee9671",
-              },
-              group,
-            );
-          }
-        }
+    const group = $("mapDecor");
+    group.replaceChildren();
+    group.setAttribute("pointer-events", "none");
+    const choices = [
+      "d-daisy",
+      "d-pink",
+      "d-pot",
+      "d-hedge",
+      "d-tree",
+      "d-bench",
+      "d-rocks",
+      "d-fence",
+      "d-mushrooms",
+    ];
+    const objects = [];
+    for (let row = -2; row <= 7; row++) {
+      for (let col = -2; col <= 6; col++) {
+        const seed = Math.abs((col + 7) * 31 + (row + 8) * 47 + S.map * 23);
+        if (seed % 5 === 0) continue;
+        const x = col * 90 + 30 + (seed % 19) - 9;
+        const y = row * 78 + 26 + ((seed * 3) % 17) - 8;
+        const id = choices[seed % choices.length];
+        const width =
+          id === "d-tree" ? 64 : id === "d-hedge" ? 58 : 38 + (seed % 10);
+        const height = id === "d-tree" ? 78 : width;
+        const clearance = Math.max(width, height) / 2;
+        if (
+          route.some(
+            (p) => distanceSquared(p[0], p[1], x, y) < (clearance + 22) ** 2,
+          )
+        )
+          continue;
+        if (
+          locations.some(
+            (p) => distanceSquared(p[0], p[1], x, y) < (clearance + 24) ** 2,
+          )
+        )
+          continue;
+        if (distanceSquared(x, y, 365, 375) < 75 ** 2) continue;
+        objects.push({ id, x, y, width, height });
       }
+    }
+    objects.sort((a, b) => a.y - b.y);
+    for (const prop of objects) {
+      const node = placeArt(
+        el,
+        prop.id,
+        {
+          x: prop.x - prop.width / 2,
+          y: prop.y - prop.height / 2,
+          width: prop.width,
+          height: prop.height,
+          class: "scenery-prop",
+        },
+        group,
+      );
+      node.dataset.x = prop.x;
+      node.dataset.y = prop.y;
     }
   }
-
   function drawScene() {
-    let group = $("boardProps");
-    group.innerHTML = "";
-    const props =
-      S.map === 0
-        ? [
-            [379, 60],
-            [26, 290],
-          ]
-        : S.map === 1
-          ? [
-              [26, 207],
-              [302, 420],
-              [190, 24],
-            ]
-          : [
-              [330, 16],
-              [31, 234],
-            ];
-    for (let [x, y] of props) {
-      let g = el("g", { transform: `translate(${x} ${y})` }, group);
-      el(
-        "ellipse",
-        { cx: 0, cy: 16, rx: 16, ry: 4, fill: "#52734d", opacity: 0.18 },
-        g,
-      );
-      if (S.map === 1) {
-        el("path", { d: "M0 15V-18", stroke: "#5b6854", "stroke-width": 3 }, g);
-        el(
-          "path",
-          {
-            d: "M-10-17h20l-3-11H-7Z",
-            fill: "#d08959",
-            stroke: "#795845",
-            "stroke-width": 1.5,
-          },
-          g,
-        );
-        el(
-          "circle",
-          { cx: 0, cy: -18, r: 5, fill: "#fff4bc", class: "nightlamp" },
-          g,
-        );
-        el(
-          "circle",
-          {
-            cx: 0,
-            cy: -18,
-            r: 13,
-            fill: "#ffed9b",
-            opacity: 0.16,
-            class: "nightlamp",
-          },
-          g,
-        );
-      } else {
-        el(
-          "path",
-          {
-            d: "M-14 0h28v6h-28Zm3 8v6m22-6v6",
-            stroke: "#896446",
-            "stroke-width": 2,
-            fill: "#c69b68",
-          },
-          g,
-        );
-        el("path", { d: "M-11-6h22", stroke: "#ba8757", "stroke-width": 4 }, g);
-      }
-    }
+    $("boardProps").replaceChildren();
   }
   function construction(x, y, color) {
     ring(x, y, 29, color);
@@ -413,6 +375,7 @@ export function createGame({ root, onChange }) {
     );
   }
   function stats(t) {
+    if (statsCache.has(t)) return statsCache.get(t);
     let r = recipes[t.type],
       mult = 1 + (t.level - 1) * 0.42,
       damage = r.damage * mult * (1 + (S.perks.damage || 0) * 0.12),
@@ -447,7 +410,9 @@ export function createGame({ root, onChange }) {
         aura = Math.max(aura, b.branch === 1 ? 0.25 : 0.1);
     rate /= 1 + aura;
     if (S.rally > 0) rate /= 1.7;
-    return { damage, rate, range: Math.round(range), r };
+    const result = { damage, rate, range: Math.round(range), r };
+    statsCache.set(t, result);
+    return result;
   }
   function padClick(i) {
     if (S.over || modalOpen || paused) return;
@@ -494,6 +459,7 @@ export function createGame({ root, onChange }) {
       stun: 0,
     };
     S.towers.push(t);
+    invalidateStats();
     meta.built++;
     drawTower(t);
     t.birth = 0.36;
@@ -526,31 +492,29 @@ export function createGame({ root, onChange }) {
     t.art = placeArt(
       el,
       "t-" + recipes[t.type].id,
-      { width: 56, height: 56, class: "art raster-art spawnpop" },
+      { x: 0, y: 0, width: 56, height: 56, class: "art raster-art" },
       t.motion,
     );
+    const start = 28 - ((t.level - 1) * 9) / 2 - 5.5;
     for (let i = 0; i < t.level; i++)
-      el(
-        "circle",
+      placeArt(
+        el,
+        "star-gold",
         {
-          cx: 19 + i * 6,
-          cy: 56,
-          r: 2,
-          fill: t.branch === 1 ? "#b9ebde" : "#fff0a0",
-          stroke: "#9a733c",
-          "stroke-width": 0.8,
+          x: start + i * 9,
+          y: 49,
+          width: 11,
+          height: 11,
+          class: "tower-star",
+          "pointer-events": "none",
         },
         g,
       );
     if (t.branch >= 0)
-      el(
-        "path",
-        {
-          d: "M45 34l3 5 6 1-4 4 1 5-6-3-5 3 1-5-4-4 6-1Z",
-          fill: t.branch === 1 ? "#8bd1d7" : "#ffd565",
-          stroke: "#806a45",
-          "stroke-width": 1,
-        },
+      placeArt(
+        el,
+        t.branch === 1 ? "star-blue" : "star-gold",
+        { x: 44, y: -3, width: 15, height: 15, "pointer-events": "none" },
         g,
       );
     el("rect", { x: -3, y: -6, width: 62, height: 68, fill: "transparent" }, g);
@@ -578,6 +542,7 @@ export function createGame({ root, onChange }) {
     S.money -= price;
     t.spent += price;
     t.level++;
+    invalidateStats();
     if (t.level === 3) {
       t.branch = branch ?? [0, 0, 1, 0, 0, 0, 0][t.type];
       meta.specs++;
@@ -608,6 +573,7 @@ export function createGame({ root, onChange }) {
     ring(...locations[t.pad], 26, "#ffd66f");
     t.node.remove();
     S.towers = S.towers.filter((a) => a !== t);
+    invalidateStats();
     closeSheet();
     save();
     renderUI();
@@ -654,23 +620,7 @@ export function createGame({ root, onChange }) {
         : 1 + ((w + S.map * 2) % 4);
   }
   function plan(w) {
-    let count =
-        S.diff === 0
-          ? Math.min(35, 8 + Math.floor(w * 1.35))
-          : Math.min(70, 10 + w * 2 + Math.floor(w / 6) * 3),
-      list = [];
-    for (let i = 0; i < count; i++) {
-      let type = "tomato";
-      if (w >= 2 && i % 3 === 1) type = "olive";
-      if (w >= 3 && i % 5 === 2) type = "mush";
-      if (w >= 4 && i % 9 === 3) type = "healer";
-      if (w >= 5 && i % 8 === 4) type = "pepper";
-      if (w >= 7 && i % 7 === 5) type = "dough";
-      if (w >= 8 && i % 6 === 0) type = "shield";
-      list.push({ type, wave: w });
-    }
-    if (w % 6 === 0) list.push({ type: "boss", wave: w });
-    return list;
+    return planWave(w, S.diff);
   }
   function startWave(early = false) {
     if (S.over || paused || modalOpen || S.perkChoices.length) return;
@@ -690,6 +640,7 @@ export function createGame({ root, onChange }) {
     }
     S.wave++;
     S.event = eventFor(S.wave);
+    invalidateStats();
     S.rewardWaves.push(S.wave);
     let queue = plan(S.wave);
     S.queue.push(...queue);
@@ -707,31 +658,34 @@ export function createGame({ root, onChange }) {
     showBanner(
       "ВОЛНА " + S.wave,
       S.wave % 6 === 0
-        ? "КОРОЛЬ КОРКИ ИДЁТ НА КУХНЮ"
+        ? species[bossForWave(S.wave)].name.toUpperCase() + " ИДЁТ НА КУХНЮ"
         : events[S.event].name.toUpperCase(),
     );
     sound(370, 0.1);
     sound(620, 0.15, 0.12);
     renderUI();
   }
-  function spawnEnemy(type, wave = S.wave, d = 0, child = false) {
+  function spawnEnemy(type, wave = S.wave, d = 0, child = false, options = {}) {
     let v = species[type],
-      diff = [0.7, 1.0, 1.43][S.diff],
+      diff = [0.92, 1.12, 1.5][S.diff],
       scale =
-        Math.pow(S.diff === 0 ? 1.085 : 1.115, Math.max(0, wave - 1)) *
+        Math.pow(S.diff === 0 ? 1.115 : 1.125, Math.max(0, wave - 1)) *
         diff *
         (wave > 24 ? 1 + (wave - 24) * 0.1 : 1),
-      hp = v.hp * scale,
+      hp = v.hp * scale * (options.elite ? 1.4 : 1),
       p = point(d),
       e = {
         type,
         wave,
         hp,
         max: hp,
-        speed: v.speed * (1 + wave * 0.012),
-        reward: v.reward,
-        life: S.diff === 0 && type === "boss" ? 4 : v.life,
-        armor: Math.min(0.72, v.armor + (S.event === 3 ? 0.15 : 0)),
+        speed: v.speed * (1 + wave * 0.015),
+        reward: Math.round(v.reward * (options.elite ? 1.35 : 1)),
+        life: S.diff === 0 && v.boss ? 4 : v.life,
+        armor: Math.min(
+          0.72,
+          v.armor + (S.event === 3 ? 0.15 : 0) + (options.elite ? 0.08 : 0),
+        ),
         d,
         x: p.x,
         y: p.y,
@@ -743,19 +697,29 @@ export function createGame({ root, onChange }) {
         dot: 0,
         burn: 0,
         source: null,
-        shield: type === "shield" ? hp * 0.45 : 0,
-        maxShield: type === "shield" ? hp * 0.45 : 0,
-        summon: 8,
+        shield: type === "shield" || type === "general" ? hp * 0.45 : 0,
+        maxShield: type === "shield" || type === "general" ? hp * 0.45 : 0,
+        summon: 5.5,
+        casting: 0,
+        haste: 0,
+        birth: options.from ? 0.48 : 0.22,
+        from: options.from || null,
+        elite: Boolean(options.elite),
         healClock: 0,
         flash: 0,
         dead: false,
       };
     let g = el(
         "g",
-        { class: "enemy spawnpop", transform: `translate(${e.x} ${e.y})` },
+        {
+          class: `enemy ${v.boss ? "boss-enemy" : ""} ${options.from ? "summoned" : ""}`,
+          "data-species": type,
+          "data-elite": e.elite,
+          transform: `translate(${e.x} ${e.y})`,
+        },
         $("enemies"),
       ),
-      sz = type === "boss" ? 61 : type === "crumb" ? 24 : 39;
+      sz = v.boss ? 66 : type === "crumb" ? 24 : 39;
     e.node = g;
     e.size = sz;
     el(
@@ -798,7 +762,7 @@ export function createGame({ root, onChange }) {
         width: 34,
         height: 4,
         rx: 2,
-        fill: type === "boss" ? "#ed825a" : "#eafaac",
+        fill: v.boss ? v.color : "#eafaac",
       },
       g,
     );
@@ -823,8 +787,208 @@ export function createGame({ root, onChange }) {
     S.enemies.push(e);
     if (child) S.total++;
     else S.spawned++;
+    return e;
   }
-  function damage(e, amount, source, pierce = false) {
+  function splitDough(enemy) {
+    for (const side of [-1, 1]) {
+      spawnEnemy(
+        "crumb",
+        enemy.wave,
+        Math.max(0, enemy.d - (side < 0 ? 8 : 26)),
+        true,
+        { from: { x: enemy.x + side * 10, y: enemy.y - 6 } },
+      );
+      if (!prefs.fx) continue;
+      const shard = el("g", { class: "dough-half" }, $("effects"));
+      const half = el(
+        "svg",
+        {
+          x: side < 0 ? -enemy.size / 2 : 0,
+          y: -enemy.size / 2,
+          width: enemy.size / 2,
+          height: enemy.size,
+          overflow: "hidden",
+        },
+        shard,
+      );
+      placeArt(
+        el,
+        "e-dough",
+        {
+          x: side < 0 ? 0 : -enemy.size / 2,
+          y: 0,
+          width: enemy.size,
+          height: enemy.size,
+        },
+        half,
+      );
+      effect(
+        shard,
+        0.42,
+        (_, p) => {
+          shard.setAttribute(
+            "transform",
+            `translate(${enemy.x + side * p * 17} ${enemy.y - Math.sin(p * Math.PI) * 14}) rotate(${side * p * 22})`,
+          );
+          shard.setAttribute("opacity", 1 - p);
+        },
+        "split",
+      );
+    }
+  }
+  function giveShield(enemy, amount) {
+    enemy.maxShield = Math.max(enemy.maxShield, amount);
+    enemy.shield = Math.min(enemy.maxShield, enemy.shield + amount);
+    if (!enemy.shieldbar)
+      enemy.shieldbar = el(
+        "rect",
+        {
+          x: -17,
+          y: -enemy.size / 2 - 11,
+          width: 34,
+          height: 2,
+          fill: "#b2f1ee",
+        },
+        enemy.node,
+      );
+    writeAttr(
+      enemy.shieldbar,
+      "width",
+      ((34 * enemy.shield) / enemy.maxShield).toFixed(1),
+    );
+  }
+  function bossSkill(enemy) {
+    const descriptor = species[enemy.type];
+    enemy.skillCount = (enemy.skillCount || 0) + 1;
+    enemy.node.dataset.skillCount = enemy.skillCount;
+    ring(enemy.x, enemy.y, 70, descriptor.color);
+    if (enemy.type === "boss") {
+      const types =
+        enemy.wave >= 12 ? ["shield", "olive", "tomato"] : ["tomato", "olive"];
+      for (let i = 0; i < types.length; i++) {
+        if (S.enemies.length >= 120) break;
+        const portalX = enemy.x + (i - 0.5) * 24;
+        ring(portalX, enemy.y + 10, 17, "#ffe4a2");
+        spawnEnemy(
+          types[i],
+          enemy.wave,
+          Math.max(0, enemy.d - 28 - i * 20),
+          true,
+          { from: { x: portalX, y: enemy.y - 4 } },
+        );
+      }
+    } else if (enemy.type === "moldboss") {
+      enemy.hp = Math.min(enemy.max, enemy.hp + enemy.max * 0.04);
+      for (const ally of S.enemies) {
+        if (
+          ally.dead ||
+          ally === enemy ||
+          distanceSquared(ally.x, ally.y, enemy.x, enemy.y) > 105 ** 2
+        )
+          continue;
+        giveShield(ally, ally.max * 0.22);
+        if (prefs.fx) {
+          const spore = el("g", {}, $("effects"));
+          placeArt(
+            el,
+            "a-heal",
+            { x: -6, y: -6, width: 12, height: 12 },
+            spore,
+          );
+          effect(spore, 0.45, (_, p) =>
+            spore.setAttribute(
+              "transform",
+              `translate(${enemy.x + (ally.x - enemy.x) * p} ${enemy.y + (ally.y - enemy.y) * p - Math.sin(p * Math.PI) * 12})`,
+            ),
+          );
+        }
+      }
+    } else if (enemy.type === "chiliboss") {
+      for (const tower of enemy.targets || []) {
+        if (!S.towers.includes(tower)) continue;
+        tower.stun = Math.max(tower.stun || 0, S.diff === 0 ? 1.25 : 1.8);
+        littleCast("a-oven", ...locations[tower.pad]);
+        ring(...locations[tower.pad], 24, "#ffac52");
+      }
+    } else {
+      giveShield(enemy, enemy.max * 0.2);
+      for (const ally of S.enemies) {
+        if (
+          !ally.dead &&
+          distanceSquared(ally.x, ally.y, enemy.x, enemy.y) < 130 ** 2
+        ) {
+          ally.haste = 4;
+          if (prefs.fx) ring(ally.x, ally.y, 17, "#71d1ed");
+        }
+      }
+    }
+  }
+  function updateBoss(enemy, dt) {
+    if (
+      !enemy.enraged &&
+      enemy.hp < enemy.max * 0.5 &&
+      ["chiliboss", "general"].includes(enemy.type)
+    ) {
+      enemy.enraged = true;
+      enemy.speed *= 1.22;
+      float(enemy.x, enemy.y - 42, "ВТОРАЯ ФАЗА!", species[enemy.type].color);
+      ring(enemy.x, enemy.y, 65, species[enemy.type].color);
+    }
+    if (enemy.casting > 0) {
+      enemy.casting -= dt;
+      if (enemy.casting <= 0) {
+        enemy.node.dataset.casting = "false";
+        bossSkill(enemy);
+      }
+      return;
+    }
+    enemy.summon -= dt;
+    if (enemy.summon > 0) return;
+    enemy.summon = enemy.type === "chiliboss" ? 9 : 7;
+    enemy.casting = 0.85;
+    enemy.node.dataset.casting = "true";
+    ring(enemy.x, enemy.y, 35, species[enemy.type].color);
+    if (enemy.type === "chiliboss") {
+      enemy.targets = S.towers
+        .filter(
+          (t) =>
+            distanceSquared(...locations[t.pad], enemy.x, enemy.y) < 140 ** 2,
+        )
+        .sort(
+          (a, b) =>
+            distanceSquared(...locations[a.pad], enemy.x, enemy.y) -
+            distanceSquared(...locations[b.pad], enemy.x, enemy.y),
+        )
+        .slice(0, 2);
+      for (const tower of enemy.targets) {
+        const [x, y] = locations[tower.pad];
+        const warning = el(
+          "circle",
+          {
+            cx: x,
+            cy: y,
+            r: 24,
+            fill: "#ff6b30",
+            "fill-opacity": 0.2,
+            stroke: "#ffe183",
+            "stroke-width": 2,
+          },
+          $("effects"),
+        );
+        effect(
+          warning,
+          0.85,
+          (_, p) =>
+            warning.setAttribute(
+              "opacity",
+              0.45 + Math.sin(p * Math.PI * 5) * 0.35,
+            ),
+          "warning",
+        );
+      }
+    }
+  }
+  function damage(e, amount, source, pierce = false, flash = true) {
     if (e.dead) return;
     let a = amount * (pierce ? 1 : 1 - e.armor);
     if (e.shield > 0) {
@@ -835,8 +999,8 @@ export function createGame({ root, onChange }) {
       e.shieldbar?.setAttribute("width", (34 * e.shield) / e.maxShield);
     }
     e.hp -= a;
-    e.flash = 0.11;
-    e.bar.setAttribute("width", Math.max(0, (34 * e.hp) / e.max));
+    if (flash && a > 0) e.flash = 0.075;
+    writeAttr(e.bar, "width", Math.max(0, (34 * e.hp) / e.max).toFixed(1));
     if (e.hp > 0) return;
     e.dead = true;
     let reward = Math.round(e.reward * (1 + (S.perks.income || 0) * 0.15));
@@ -844,22 +1008,19 @@ export function createGame({ root, onChange }) {
     S.kills++;
     meta.kills++;
     if (source) source.kills++;
-    if (e.type === "boss") {
+    if (isBoss(e)) {
       meta.boss++;
-      celebrate("Корочка без короны!", "Босс повержен · +" + reward + " монет");
+      celebrate(
+        species[e.type].name + " повержен!",
+        "Босс повержен · +" + reward + " монет",
+      );
       float(e.x, e.y - 25, "БОСС ПОВЕРЖЕН!", "#c45130");
       sound(1000, 0.18);
       haptic([30, 40, 30]);
     } else if (S.kills % 5 === 0) float(e.x, e.y - 17, "+" + reward, "#98702b");
-    burst(
-      e.x,
-      e.y,
-      recipes[source?.type ?? 0].color,
-      e.type === "boss" ? 24 : 6,
-    );
+    burst(e.x, e.y, recipes[source?.type ?? 0].color, isBoss(e) ? 16 : 5);
     if (e.type === "dough") {
-      spawnEnemy("crumb", e.wave, e.d - 7, true);
-      spawnEnemy("crumb", e.wave, e.d - 24, true);
+      splitDough(e);
     }
     if (e.type === "pepper") {
       ring(e.x, e.y, 65, "#eb7144");
@@ -886,7 +1047,7 @@ export function createGame({ root, onChange }) {
         c.setAttribute("opacity", 1 - p);
       });
     }
-    if (prefs.fx) {
+    if (prefs.fx && e.type !== "dough") {
       let ghost = el(
         "g",
         { transform: `translate(${e.x} ${e.y})` },
@@ -925,7 +1086,7 @@ export function createGame({ root, onChange }) {
       d *= 2;
       float(e.x, e.y - 18, "КРИТ!", "#d46235");
     }
-    if (type === 5 && t.branch === 0 && e.type === "boss") d *= 2;
+    if (type === 5 && t.branch === 0 && isBoss(e)) d *= 2;
     damage(
       e,
       d,
@@ -1009,6 +1170,8 @@ export function createGame({ root, onChange }) {
     t.cd = st.rate;
     t.flash = 0.1;
     t.recoil = 0.22;
+    if (Math.abs(target.x - x) > 4) t.face = target.x < x ? -1 : 1;
+    t.node.dataset.facing = t.face || 1;
     let n = el("g", {}, $("shots"));
     let size = t.type === 3 ? 17 : t.type === 5 ? 11 : 13;
     el(
@@ -1056,12 +1219,7 @@ export function createGame({ root, onChange }) {
       S.cool.bomb = 32;
       for (let e of S.enemies)
         if (Math.hypot(e.x - x, e.y - y) < 73)
-          damage(
-            e,
-            (105 + S.wave * 15) * (e.type === "boss" ? 0.75 : 1),
-            null,
-            true,
-          );
+          damage(e, (105 + S.wave * 15) * (isBoss(e) ? 0.75 : 1), null, true);
       ring(x, y, 73, "#ed8243");
       burst(x, y, "#ffc562", 28);
       float(x, y - 10, "СОУС-БУМ", "#c5512f");
@@ -1123,7 +1281,7 @@ export function createGame({ root, onChange }) {
       );
       effect(mist, 0.7, (f, p) => mist.setAttribute("opacity", 0.22 * (1 - p)));
       for (let e of S.enemies) {
-        e.slow = Math.max(e.slow, e.type === "boss" ? 3 : 6);
+        e.slow = Math.max(e.slow, isBoss(e) ? 3 : 6);
         e.slowPower = 0.35;
         ring(e.x, e.y, 24, "#b1eeeb");
       }
@@ -1133,6 +1291,7 @@ export function createGame({ root, onChange }) {
     }
     if (id === "rally") {
       S.rally = 7;
+      invalidateStats();
       S.cool.rally = 48;
       for (let t of S.towers) ring(...locations[t.pad], 23, "#ec894d");
       toast("Острая смена: скорость атаки +70% на 7 с");
@@ -1177,14 +1336,16 @@ export function createGame({ root, onChange }) {
         0,
         S.cool[k] - dt * (1 + (S.perks.cool || 0) * 0.15),
       );
+    const rallyBefore = S.rally;
     S.rally = Math.max(0, S.rally - dt);
+    if (rallyBefore > 0 && S.rally === 0) invalidateStats();
     if (S.running) {
       S.spawn -= dt;
       if (S.spawn <= 0 && S.queue.length) {
         let q = S.queue.shift();
-        spawnEnemy(q.type, q.wave);
+        spawnEnemy(q.type, q.wave, 0, false, { elite: q.elite });
         S.spawn =
-          Math.max(0.23, 0.9 - S.wave * 0.018) * (S.event === 1 ? 0.65 : 1);
+          Math.max(0.24, 0.82 - S.wave * 0.018) * (S.event === 1 ? 0.68 : 1);
       }
     }
     let liveSnapshot = [...S.enemies];
@@ -1195,20 +1356,26 @@ export function createGame({ root, onChange }) {
       e.flash = Math.max(0, e.flash - dt);
       e.slow = Math.max(0, e.slow - dt);
       e.stun = Math.max(0, e.stun - dt);
+      e.haste = Math.max(0, e.haste - dt);
+      e.birth = Math.max(0, e.birth - dt);
       if (e.poison > 0) {
         e.poison -= dt;
-        damage(e, e.dot * dt, e.source, true);
+        damage(e, e.dot * dt, e.source, true, false);
       }
       if (e.burn > 0) {
         e.burn -= dt;
-        damage(e, (e.burnDot || 14) * dt, e.source, true);
+        damage(e, (e.burnDot || 14) * dt, e.source, true, false);
       }
       if (e.dead) continue;
       if (S.event === 2) e.hp = Math.min(e.max, e.hp + e.max * 0.015 * dt);
       if (e.type === "healer") {
         e.healClock -= dt;
         for (let a of liveSnapshot)
-          if (!a.dead && a !== e && Math.hypot(a.x - e.x, a.y - e.y) < 60) {
+          if (
+            !a.dead &&
+            a !== e &&
+            distanceSquared(a.x, a.y, e.x, e.y) < 3600
+          ) {
             let heal = Math.min(
               a.max * 0.027 * dt,
               Math.max(0, a.max * 0.05 * dt - a.healed),
@@ -1221,28 +1388,21 @@ export function createGame({ root, onChange }) {
           ring(e.x, e.y, 60, "#87c47c");
         }
       }
-      if (e.type === "boss") {
-        e.summon -= dt;
-        if (e.summon <= 0) {
-          e.summon = 8;
-          spawnEnemy("tomato", e.wave, Math.max(0, e.d - 35), true);
-          spawnEnemy("olive", e.wave, Math.max(0, e.d - 60), true);
-          ring(e.x, e.y, 38, "#dc7954");
-        }
-      }
+      if (isBoss(e)) updateBoss(e, dt);
       let slowFactor =
           e.slow > 0
-            ? e.type === "boss"
+            ? isBoss(e)
               ? Math.max(0.75, e.slowPower)
               : e.slowPower
             : 1,
         move =
-          e.stun > 0
+          e.stun > 0 || e.casting > 0
             ? 0
             : e.speed *
               dt *
               slowFactor *
               (S.event === 1 ? 1.12 : 1) *
+              (e.haste > 0 ? 1.3 : 1) *
               (e.type === "olive" && e.age % 4 < 0.7
                 ? S.diff === 0
                   ? 1.3
@@ -1254,25 +1414,50 @@ export function createGame({ root, onChange }) {
       e.face = face;
       e.x = p.x;
       e.y = p.y;
+      const birth = e.birth / (e.from ? 0.48 : 0.22);
+      const offsetX = e.from ? (e.from.x - e.x) * birth : 0;
+      const offsetY = e.from
+        ? (e.from.y - e.y) * birth - Math.sin(birth * Math.PI) * 13
+        : 0;
       e.node.setAttribute(
         "transform",
-        `translate(${e.x.toFixed(2)} ${e.y.toFixed(2)})`,
+        `translate(${(e.x + offsetX).toFixed(2)} ${(e.y + offsetY).toFixed(2)})`,
       );
       let bob = prefs.fx && move > 0 ? Math.sin(e.d * 0.22) * 1.15 : 0;
       let rock = prefs.fx && move > 0 ? Math.sin(e.d * 0.22) * 4.5 : 0;
-      e.art.setAttribute(
+      const pulse =
+        e.casting > 0 && prefs.fx
+          ? Math.sin((e.casting / 0.85) * Math.PI) * 0.14
+          : 0;
+      const appearance = prefs.fx ? 1 - birth * 0.45 : 1;
+      writeAttr(
+        e.art,
         "transform",
-        `translate(0 ${bob.toFixed(2)}) rotate(${rock.toFixed(2)}) scale(${face} 1)`,
+        `translate(0 ${bob.toFixed(2)}) rotate(${rock.toFixed(2)}) scale(${(face * appearance * (1 + pulse)).toFixed(3)} ${(appearance * (1 - pulse * 0.7)).toFixed(3)})`,
       );
-      e.art.style.filter =
+      const filter =
         e.flash > 0
           ? "url(#enemyHit)"
           : e.slow > 0
             ? "drop-shadow(0 0 2px #83dfe2)"
             : e.poison > 0
               ? "drop-shadow(0 0 2px #66a865)"
-              : "";
-      e.bar.setAttribute("width", Math.max(0, (34 * e.hp) / e.max));
+              : e.elite
+                ? "drop-shadow(0 0 2px #fbd774)"
+                : "";
+      if (e.lastFilter !== filter) {
+        e.art.style.filter = filter;
+        e.lastFilter = filter;
+      }
+      writeAttr(e.node, "data-poisoned", e.poison > 0 ? "true" : "false");
+      writeAttr(e.bar, "width", Math.max(0, (34 * e.hp) / e.max).toFixed(1));
+      if (prefs.fx && (e.poison > 0 || e.burn > 0)) {
+        e.statusFx = (e.statusFx || 0) - dt;
+        if (e.statusFx <= 0) {
+          e.statusFx = 0.6;
+          burst(e.x, e.y - 10, e.poison > 0 ? "#b4ed6d" : "#ffad4d", 2);
+        }
+      }
       if (e.d >= roadLength - 9) {
         S.lives = Math.max(0, S.lives - e.life);
         S.leaks += e.life;
@@ -1293,18 +1478,20 @@ export function createGame({ root, onChange }) {
     for (let t of S.towers) {
       t.cd -= dt;
       t.stun = Math.max(0, (t.stun || 0) - dt);
+      writeAttr(t.node, "data-stunned", t.stun > 0 ? "true" : "false");
       t.stunShield = Math.max(0, (t.stunShield || 0) - dt);
       t.flash = Math.max(0, (t.flash || 0) - dt);
       t.recoil = Math.max(0, (t.recoil || 0) - dt);
       t.birth = Math.max(0, (t.birth || 0) - dt);
       let bounce = prefs.fx ? Math.sin(((t.recoil || 0) / 0.22) * Math.PI) : 0,
         entrance = prefs.fx ? 1 - (t.birth / 0.36) * 0.65 : 1;
-      t.motion.setAttribute(
+      writeAttr(
+        t.motion,
         "transform",
-        `translate(28 56) scale(${(entrance * (1 + bounce * 0.13)).toFixed(3)} ${(entrance * (1 - bounce * 0.11)).toFixed(3)}) translate(-28 -56)`,
+        `translate(28 56) scale(${((t.face || 1) * entrance * (1 + bounce * 0.13)).toFixed(3)} ${(entrance * (1 - bounce * 0.11)).toFixed(3)}) translate(-28 -56)`,
       );
-      t.motion.setAttribute("opacity", Math.min(1, entrance * 2));
-      t.art.style.filter =
+      writeAttr(t.motion, "opacity", Math.min(1, entrance * 2));
+      const filter =
         (selected === t.pad ? "url(#towerOutline) " : "") +
         (t.stun > 0
           ? "grayscale(.8)"
@@ -1313,22 +1500,14 @@ export function createGame({ root, onChange }) {
             : S.rally > 0
               ? "drop-shadow(0 0 3px #ee8742)"
               : "");
+      if (t.lastFilter !== filter) {
+        t.art.style.filter = filter;
+        t.lastFilter = filter;
+      }
       if (t.stun > 0 || t.cd > 0) continue;
-      let [x, y] = locations[t.pad],
-        st = stats(t),
-        valid = S.enemies.filter(
-          (e) => Math.hypot(e.x - x, e.y - y) < st.range,
-        );
-      valid.sort((a, b) =>
-        t.priority === 1
-          ? b.hp + b.shield - a.hp - a.shield
-          : t.priority === 2
-            ? Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)
-            : t.priority === 3
-              ? (b.type === "healer") - (a.type === "healer") || b.d - a.d
-              : b.d - a.d,
-      );
-      if (valid.length) fire(t, valid[0]);
+      const [x, y] = locations[t.pad];
+      const target = selectTarget(S.enemies, x, y, stats(t).range, t.priority);
+      if (target) fire(t, target);
     }
     for (let s of S.shots) {
       if (s.target.dead) {
@@ -1375,7 +1554,7 @@ export function createGame({ root, onChange }) {
         if (Math.hypot(e.x - tr.x, e.y - tr.y) < 31) {
           e.slow = Math.max(e.slow, 0.3);
           e.slowPower = 0.45;
-          damage(e, (12 + S.wave * 1.5) * dt, null, true);
+          damage(e, (12 + S.wave * 1.5) * dt, null, true, false);
         }
       if (tr.time <= 0) tr.node.remove();
     }
@@ -1387,7 +1566,7 @@ export function createGame({ root, onChange }) {
       if (S.autoTimer <= 0) startWave();
     }
     uiClock += dt;
-    if (uiClock > 0.15) {
+    if (uiClock > 0.25) {
       uiClock = 0;
       renderUI();
     }
@@ -1436,6 +1615,7 @@ export function createGame({ root, onChange }) {
     openModal("perks");
   }
   function choosePerk(id) {
+    invalidateStats();
     if (!S.perkChoices.includes(id)) return;
     if (id === "cash") S.money += 140;
     else if (id === "health") {
@@ -1452,12 +1632,13 @@ export function createGame({ root, onChange }) {
   let damageFlash = 0;
   function renderUI() {
     if (disposed) return;
+    wake();
     const t = towerAt(selected),
       st =
         selected >= 0
           ? stats(t || { type: pick, level: 1, branch: -1, pad: selected })
           : null;
-    const boss = S.enemies.find((e) => !e.dead && e.type === "boss");
+    const boss = S.enemies.find((e) => !e.dead && isBoss(e));
     onChange({
       ...snapshot(),
       running: S.running,
@@ -1509,7 +1690,17 @@ export function createGame({ root, onChange }) {
               costs: recipes.map((_, i) => cost(i)),
               upgradeCost: t ? upgradeCost(t) : 0,
             },
-      boss: boss ? { hp: boss.hp, max: boss.max } : null,
+      boss: boss
+        ? {
+            hp: boss.hp,
+            max: boss.max,
+            type: boss.type,
+            name: species[boss.type].name,
+            color: species[boss.type].color,
+            skill: species[boss.type].skill,
+            casting: boss.casting > 0,
+          }
+        : null,
       intel:
         modalKind === "intel"
           ? {
@@ -1615,6 +1806,7 @@ export function createGame({ root, onChange }) {
   function reset(map = chosenMap, diff = chosenDiff) {
     clearSave();
     S = fresh(map, diff);
+    invalidateStats();
     for (const id of [
       "towers",
       "enemies",
@@ -1658,6 +1850,7 @@ export function createGame({ root, onChange }) {
     ])
       if (c[k] !== undefined) S[k] = c[k];
     S.towers = c.towers.map((t) => ({ ...t, cd: 0, stun: 0 }));
+    invalidateStats();
     S.endless = S.endless || S.wave >= goal();
     for (const t of S.towers) drawTower(t);
     buildHighlight = false;
@@ -1729,15 +1922,41 @@ export function createGame({ root, onChange }) {
   );
   setupMap();
   intro();
-  let last = performance.now();
+  function hasWork() {
+    return (
+      !disposed &&
+      !paused &&
+      !modalOpen &&
+      !S.over &&
+      (S.running ||
+        S.fx.length ||
+        S.texts.length ||
+        S.traps.length ||
+        S.shots.length ||
+        S.rally > 0 ||
+        Object.values(S.cool).some((value) => value > 0) ||
+        (prefs.auto && S.autoTimer > 0) ||
+        S.towers.some(
+          (t) => t.birth > 0 || t.recoil > 0 || t.stun > 0 || t.flash > 0,
+        ))
+    );
+  }
+  function wake() {
+    if (frame === null && hasWork()) {
+      last = performance.now();
+      frame = requestAnimationFrame(loop);
+    }
+  }
   function loop(now) {
     if (disposed) return;
+    frame = null;
     const dt = Math.min(0.045, (now - last) / 1000);
     last = now;
     tick(dt);
-    frame = requestAnimationFrame(loop);
+    if (frame === null && hasWork()) frame = requestAnimationFrame(loop);
+    else if (frame === null && !paused && !modalOpen && !S.over) renderUI();
   }
-  frame = requestAnimationFrame(loop);
+  wake();
   return {
     startWave: () => startWave(S.running),
     build,

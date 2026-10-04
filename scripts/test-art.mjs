@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
 import { artFor, placeArt, rasterIcon } from "../src/game/art.js";
+import { recipes, species, abilities, perks } from "../src/game/config.js";
+for (const id of [
+  ...recipes.map((recipe) => `t-${recipe.id}`),
+  ...Object.keys(species).map((type) => `e-${type}`),
+  ...abilities.map((ability) => ability.icon),
+  ...perks.map((perk) => perk.icon),
+])
+  assert(artFor(id), `Game content requires a raster frame: ${id}`);
 const ids = [
   "t-pepper",
   "t-cheese",
@@ -43,6 +51,21 @@ const ids = [
   "a-soda",
   "a-sniper",
   "a-farm",
+  "star-gold",
+  "star-blue",
+  "i-upgrade",
+  "e-moldboss",
+  "e-chiliboss",
+  "e-general",
+  "d-daisy",
+  "d-pink",
+  "d-pot",
+  "d-hedge",
+  "d-tree",
+  "d-bench",
+  "d-rocks",
+  "d-fence",
+  "d-mushrooms",
 ];
 const clips = new Set();
 const el = (tag, attrs = {}, parent) => {

@@ -1,7 +1,8 @@
 export function createEffects({ getState, prefs, $, el }) {
   function effect(n, time, update, kind = "") {
     const S = getState();
-    if (S.fx.length > 130) {
+    // Puddles affect combat and must survive the cosmetic particle budget.
+    if (kind !== "puddle" && S.fx.length >= 100) {
       n.remove();
       return;
     }
@@ -10,17 +11,23 @@ export function createEffects({ getState, prefs, $, el }) {
   function burst(x, y, color, count) {
     const S = getState();
     if (!prefs.fx) return;
-    for (let i = 0; i < count; i++) {
+    const budget = Math.min(
+      Math.ceil(count * (S.enemies.length > 36 ? 0.65 : 1)),
+      Math.max(0, 90 - S.fx.length),
+    );
+    for (let i = 0; i < budget; i++) {
       let angle = Math.random() * 6.28,
         v = 12 + Math.random() * 32,
+        vx = Math.cos(angle) * v,
+        vy = Math.sin(angle) * v,
         n = el(
           "circle",
           { cx: x, cy: y, r: 1.4 + Math.random() * 1.8, fill: color },
           $("effects"),
         );
       effect(n, 0.4 + Math.random() * 0.2, (f, p) => {
-        n.setAttribute("cx", x + Math.cos(angle) * v * p);
-        n.setAttribute("cy", y + Math.sin(angle) * v * p + 12 * p * p);
+        n.setAttribute("cx", x + vx * p);
+        n.setAttribute("cy", y + vy * p + 12 * p * p);
         n.setAttribute("opacity", 1 - p);
       });
     }
@@ -58,7 +65,7 @@ export function createEffects({ getState, prefs, $, el }) {
       (f, p) => {
         n.setAttribute("opacity", 0.5 * (1 - p));
         for (let e of S.enemies)
-          if (!e.dead && Math.hypot(e.x - x, e.y - y) < 29) {
+          if (!e.dead && distanceSquared(e.x, e.y, x, y) < 841) {
             e.slow = Math.max(e.slow, 0.3);
             e.slowPower = 0.55;
           }
@@ -94,3 +101,4 @@ export function createEffects({ getState, prefs, $, el }) {
 
   return { effect, burst, ring, puddle, lightning, float };
 }
+import { distanceSquared } from "./targeting.js";

@@ -9,7 +9,7 @@ const required = [
   "App.jsx",
   "components.jsx",
   "GameScene.jsx",
-  ...["engine", "config", "effects", "audio", "art", "camera"].map(
+  ...["engine", "config", "effects", "audio", "art", "camera", "targeting"].map(
     (name) => `game/${name}.js`,
   ),
   ...["game", "polish", "casual", "ultra", "mobile"].map(
@@ -18,8 +18,9 @@ const required = [
   ...[
     "towers-atlas.png",
     "enemies-atlas.png",
-    "garden.png",
-    "garden-expanded.png",
+    "grass-tile.png",
+    "decor-atlas.png",
+    "bonus-atlas.png",
     "icons-atlas.png",
     "ammo-atlas.png",
     "sprites.svg",

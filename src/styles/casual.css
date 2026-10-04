@@ -580,12 +580,6 @@
     padding: 19px;
   }
 }
-#defaultDecor,
-#mapDecor,
-#boardProps,
-#map > rect[fill="url(#grass)"] {
-  display: none !important;
-}
 .rasterSprite {
   background: none !important;
   overflow: hidden;

@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/validate-build.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node scripts/validate.mjs && node scripts/test-art.mjs && node scripts/test-isolation.mjs",
+    "test": "node scripts/validate.mjs && node scripts/test-art.mjs && node scripts/test-isolation.mjs && node scripts/test-combat.mjs",
     "test:browser": "playwright test"
   },
   "engines": {

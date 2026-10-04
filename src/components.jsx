@@ -1,18 +1,21 @@
-import { memo, useId, useRef } from "react";
+import { createContext, memo, useContext, useId, useRef } from "react";
 import { artFor } from "./game/art.js";
 import { recipes, maps, species, events, perks } from "./game/config.js";
 import boardSvg from "./assets/board.svg?raw";
-import gardenUrl from "./assets/garden.png";
+import gardenUrl from "./assets/grass-tile.png";
 
 // Only this static SVG subtree is handed to the animation engine.
-const boardMarkup = boardSvg.replace("./assets/garden.png", gardenUrl);
+const boardMarkup = boardSvg;
 export const Board = memo(function Board() {
   return (
     <div id="mapMount" dangerouslySetInnerHTML={{ __html: boardMarkup }} />
   );
 });
 
-export function Icon({ id, className = "" }) {
+export const RasterReadyContext = createContext(false);
+export const Icon = memo(function Icon({ id, className = "" }) {
+  // Atlas preparation happens once; refresh even memoized icons when it completes.
+  useContext(RasterReadyContext);
   const clip = `sprite-${useId().replace(/:/g, "")}`;
   const art = artFor(id);
   if (!art)
@@ -23,6 +26,21 @@ export function Icon({ id, className = "" }) {
     );
   const [x, y, width, height] = art.box;
   const scale = Math.min(64 / width, 64 / height);
+  if (art.isolated)
+    return (
+      <svg
+        className={`rasterSprite ${className}`}
+        viewBox="0 0 64 64"
+        aria-hidden="true"
+      >
+        <image
+          href={art.url}
+          width="64"
+          height="64"
+          preserveAspectRatio="xMidYMid meet"
+        />
+      </svg>
+    );
   return (
     <svg
       className={`rasterSprite ${className}`}
@@ -45,7 +63,7 @@ export function Icon({ id, className = "" }) {
       </g>
     </svg>
   );
-}
+});
 
 export function BuildSheet({ view, actions }) {
   const swipeStart = useRef(null);
@@ -187,9 +205,12 @@ export function BuildSheet({ view, actions }) {
                   disabled={tower.level >= 5 || view.money < upgradeCost}
                   onClick={() => actions.upgrade()}
                 >
-                  {tower.level >= 5
-                    ? "Мастер-рецепт: максимум"
-                    : `Улучшить до ${tower.level + 1} · ${upgradeCost}`}
+                  <Icon id={tower.level >= 5 ? "star-gold" : "i-upgrade"} />
+                  <span>
+                    {tower.level >= 5
+                      ? "Мастер-рецепт: максимум"
+                      : `Улучшить до ${tower.level + 1} · ${upgradeCost}`}
+                  </span>
                 </button>
               </>
             )}
@@ -221,7 +242,7 @@ function Intro({ view, actions }) {
       <h2>Готовим и играем!</h2>
       <p>
         Нажми на площадку, выбери вкусную башню и защищай пиццерию. Начни с
-        уютного режима — он про удовольствие, а не спешку.
+        уютного режима: познакомься с рецептами и приготовься к боссам.
       </p>
       <div className="eyebrow">КАРТА</div>
       <div className="choices">
@@ -248,7 +269,7 @@ function Intro({ view, actions }) {
       <div className="eyebrow">НАСТРОЕНИЕ</div>
       <div className="choices">
         {[
-          ["Уютно", "18 спокойных волн"],
+          ["Уютно", "18 волн · 3 босса"],
           ["Классика", "Больше тактики"],
           ["Остро", "Для опытных"],
         ].map(([label, description], index) => (
@@ -284,7 +305,7 @@ function Help({ actions }) {
   const rules = [
     [
       "i-full",
-      "Поле можно двигать одним пальцем и приближать двумя. Кнопка прицела возвращает всю карту в центр. Управление всегда остаётся поверх карты.",
+      "Двигай поле одним пальцем и меняй масштаб двумя. На компьютере — мышь и колесо. Кнопки всегда остаются поверх карты.",
     ],
     [
       "i-build",
@@ -360,9 +381,9 @@ export function GameModal({ view, actions }) {
             </div>
           ))}
           <p>
-            Двигай поле одним пальцем, меняй масштаб щипком или кнопками + и −.
-            Панели закрываются крестиком или свайпом вниз за верхний край. На
-            телефоне можно включить полный экран.
+            Двигай поле одним пальцем, меняй масштаб щипком двух пальцев. Панели
+            закрываются крестиком или свайпом вниз за верхний край. На телефоне
+            можно включить полный экран.
           </p>
           <button className="primary" onClick={actions.back}>
             Готово

@@ -1,7 +1,7 @@
 /* A full-screen scene and a separate, fixed HUD. The world alone moves and scales. */
 .app.mobile-game {
-  --glass: #fffaf2ed;
-  --hud-shadow: 0 4px 14px #314b292c, inset 0 1px 0 #fff9;
+  --glass: linear-gradient(#fffdf1, #ffedc7);
+  --hud-shadow: 0 3px 0 #95703d, 0 5px 10px #314b2933, inset 0 2px 0 #fff;
   --safe-top: max(12px, env(safe-area-inset-top));
   --safe-bottom: max(12px, env(safe-area-inset-bottom));
   width: 100%;
@@ -122,10 +122,13 @@
 .mobile-game .top .iconbtn {
   width: 44px;
   height: 44px;
-  border: 1px solid #fff8;
+  border: 2px solid #b98d51;
   border-radius: 16px;
   background: var(--glass);
   box-shadow: var(--hud-shadow);
+  padding: 5px;
+  display: grid;
+  place-items: center;
 }
 .mobile-game .stats {
   position: absolute;
@@ -144,7 +147,7 @@
   height: 47px;
   padding: 6px 9px;
   gap: 5px;
-  border: 1px solid #fff8;
+  border: 2px solid #b98d51;
   border-radius: 18px;
   background: var(--glass);
   box-shadow: var(--hud-shadow);
@@ -174,7 +177,8 @@
   padding: 0 0 0 10px;
   gap: 8px;
   border-radius: 13px;
-  background: #fffaf2d9;
+  background: linear-gradient(#fff8db, #ffdfa0);
+  border: 2px solid #b98d51;
   box-shadow: var(--hud-shadow);
   z-index: 30;
   pointer-events: none;
@@ -194,7 +198,7 @@
   border-radius: 12px;
   font-size: 12px;
   color: #765744;
-  background: #f2e1cbe8;
+  background: linear-gradient(#ffe798, #efbf64);
   pointer-events: auto;
 }
 .scene-messages {
@@ -315,10 +319,13 @@
   width: min(440px, calc(100% - 24px));
   margin: 0 auto;
   padding: 8px;
-  border: 1px solid #fff8;
+  border: 2px solid #ac813e;
   border-radius: 24px;
-  background: #fffaf2d9;
-  box-shadow: 0 6px 24px #243d2933;
+  background: linear-gradient(#fff6d9, #f9dba5);
+  box-shadow:
+    0 4px 0 #85613b,
+    0 7px 18px #243d2933,
+    inset 0 2px 0 #fff;
   z-index: 30;
 }
 .mobile-game .abilities {
@@ -329,10 +336,12 @@
   height: 58px;
   min-height: 58px;
   padding: 4px 1px;
-  background: #fffdf5e8;
-  border: 1px solid #f0dfcb;
+  background: linear-gradient(#fffdf0, #ffe9bc);
+  border: 2px solid #d1a867;
   border-radius: 15px;
-  box-shadow: none;
+  box-shadow:
+    0 2px 0 #c49353,
+    inset 0 2px 0 #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -352,23 +361,32 @@
   font-size: 8px;
 }
 .mobile-game .ability.active {
-  background: #fff0b4;
-  border-color: #dea859;
+  background: linear-gradient(#ffe980, #ffc44c);
+  border-color: #bd8534;
 }
 .mobile-game .dockactions {
   gap: 6px;
 }
 .mobile-game .dockactions button {
   min-height: 44px;
-  border: 0;
+  border: 2px solid #c48e4b;
   border-radius: 15px;
   font-size: 12px;
-  box-shadow: none;
-  background: #f0e0cce8;
+  box-shadow:
+    0 3px 0 #ad7840,
+    inset 0 2px 0 #fff8;
+  background: linear-gradient(#ffe99d, #efc66e);
+  color: #79522e;
+  font-weight: 700;
 }
 .mobile-game .dockactions .wavebtn {
-  background: #4b9c69;
+  background: linear-gradient(#a9dc64, #70b741);
+  border-color: #598737;
+  box-shadow:
+    0 3px 0 #436d2d,
+    inset 0 2px 0 #dfff9e;
   color: #fffdf0;
+  text-shadow: 0 1px 1px #47732d;
 }
 .mobile-game .nativefoot.bottomnav {
   position: absolute;
@@ -402,47 +420,6 @@
   width: 27px;
   height: 27px;
 }
-.camera-controls {
-  position: absolute;
-  top: calc(var(--safe-top) + 153px);
-  right: 12px;
-  width: 44px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  cursor: default;
-  z-index: 25;
-}
-.camera-controls button {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  border: 1px solid #fff8;
-  border-radius: 15px;
-  background: var(--glass);
-  color: #735741;
-  box-shadow: var(--hud-shadow);
-  font-size: 25px;
-  font-weight: 500;
-  display: grid;
-  place-items: center;
-  padding: 0;
-}
-.camera-controls button svg {
-  width: 23px;
-  height: 23px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-}
-.zoom-readout {
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff8e3;
-  text-shadow: 0 1px 3px #345622;
-  text-align: center;
-  padding: 1px 0;
-}
 .mobile-game .sheet {
   z-index: 60;
   left: 50%;
@@ -451,11 +428,14 @@
   width: min(480px, calc(100% - 24px));
   max-height: min(67dvh, 620px);
   padding: 10px 13px 14px;
-  background: #fff9ef;
-  border: 1px solid #fff;
+  background: linear-gradient(#fffbea, #ffe9c1);
+  border: 3px solid #c79a59;
   border-radius: 25px;
   transform: translate(-50%, calc(100% + 30px));
-  box-shadow: 0 10px 50px #203c3055;
+  box-shadow:
+    0 5px 0 #8b633b,
+    0 10px 35px #203c3055,
+    inset 0 3px 0 #fff;
 }
 .mobile-game .sheet.open {
   transform: translate(-50%, 0);
@@ -491,9 +471,6 @@
     bottom: var(--safe-bottom);
     flex-direction: row;
     width: auto;
-  }
-  .mobile-game .camera-controls {
-    top: calc(var(--safe-top) + 55px);
   }
   .mobile-game .sheet {
     left: auto;
@@ -601,4 +578,148 @@
 .mobile-game .nativefoot.bottomnav button span {
   display: inline;
   font-size: 12px;
+}
+
+/* Soft toy-like plates, raised buttons and clear silhouettes on the field. */
+.mobile-game .logo.menu-trigger {
+  border: 2px solid #b98d51;
+}
+.mobile-game .stat:nth-child(1) {
+  background: linear-gradient(#fff8cc, #ffe297);
+}
+.mobile-game .stat:nth-child(2) {
+  background: linear-gradient(#fff3e8, #ffd5b9);
+}
+.mobile-game .stat:nth-child(3) {
+  background: linear-gradient(#f6ffdf, #d8eeac);
+}
+.mobile-game .stat strong {
+  color: #79522e;
+  font-weight: 700;
+}
+.mobile-game .stat small {
+  color: #9c7346;
+}
+.mobile-game .map [role="button"]:focus {
+  outline: none;
+}
+.mobile-game .pad:focus-visible .pad-base {
+  stroke: #fff7b6;
+  stroke-width: 4;
+}
+.mobile-game .tower:focus-visible .art {
+  filter: url(#towerOutline) !important;
+}
+.mobile-game .top button:active,
+.mobile-game .dock button:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.mobile-game .bossbar {
+  background: linear-gradient(#fff3d3, #ffe1a6);
+  border: 2px solid var(--boss-color, #bd8746);
+  border-radius: 17px;
+  color: #674529;
+  padding: 7px 10px;
+  box-shadow:
+    0 3px 0 #9b6d42,
+    inset 0 2px 0 #fff;
+}
+.mobile-game .bossbar small {
+  display: block;
+  font-size: 9px;
+  margin-top: 3px;
+  color: #9b6841;
+}
+.scene-messages.has-boss .maptag,
+.scene-messages.has-boss .eventchip {
+  display: none;
+}
+.mobile-game .bossbar i {
+  height: 7px;
+  background: var(--boss-color, #e5a246);
+  box-shadow: inset 0 2px 0 #fff5;
+}
+.mobile-game .bossbar[data-casting="true"] small {
+  color: #c75137;
+  font-weight: 700;
+}
+.sheet .primary,
+.modal .primary {
+  background: linear-gradient(#a9dc64, #70b741);
+  border: 2px solid #5c8938;
+  box-shadow:
+    0 4px 0 #426a2c,
+    inset 0 2px 0 #dfff9e;
+  border-radius: 19px;
+  color: #fffdf0;
+  text-shadow: 0 1px 1px #47732d;
+  font-weight: 700;
+}
+.modal .primary {
+  background: linear-gradient(#ffb469, #f27c42);
+  border-color: #ce6b38;
+  box-shadow:
+    0 4px 0 #a84d2c,
+    inset 0 2px 0 #ffe0a2;
+  text-shadow: 0 1px 1px #b5602c;
+}
+.sheet .card,
+.modal .choice,
+.modal .perk {
+  background: linear-gradient(#fffef3, #ffedca);
+  border: 2px solid #e0ba7d;
+  box-shadow:
+    0 3px 0 #d0a066,
+    inset 0 2px 0 #fff;
+  border-radius: 19px;
+}
+.sheet .card.active,
+.modal .choice.active {
+  background: linear-gradient(#f4ffd0, #d8ed9c);
+  border-color: #81a849;
+  box-shadow:
+    0 3px 0 #66883b,
+    inset 0 2px 0 #fff;
+}
+.sheet .card strong,
+.modal .choice {
+  color: #775631;
+  font-weight: 700;
+}
+.modal .secondary,
+.sheet .actions button,
+.modal .toggle,
+.sheet .branch {
+  background: linear-gradient(#fff4d0, #ffe3a5);
+  border: 2px solid #dbb072;
+  border-radius: 17px;
+  box-shadow:
+    0 2px 0 #c99a59,
+    inset 0 2px 0 #fff8;
+  color: #845b35;
+}
+.overlay {
+  background: #284329b8;
+  backdrop-filter: none;
+}
+.modal {
+  background: linear-gradient(#fffbea, #ffe9c1);
+  border: 3px solid #c99a58;
+  border-radius: 32px;
+  box-shadow:
+    0 6px 0 #88613b,
+    0 14px 40px #18371c66,
+    inset 0 3px 0 #fff;
+}
+.modal h2 {
+  color: #678b39;
+  text-shadow: 0 2px 0 #fff;
+}
+.modal .primary:active:not(:disabled),
+.sheet .primary:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.gamePaused .pad .build-ring,
+.gamePaused .entryFlow {
+  animation-play-state: paused !important;
 }

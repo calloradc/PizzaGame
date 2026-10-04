@@ -49,19 +49,20 @@ test("fullscreen square world, native pan/tap separation and fixed HUD", async (
   const board = await page.locator(".camera-world").boundingBox();
   expect(board.width).toBeCloseTo(board.height, 4);
   await expect(page.locator("#map")).toHaveAttribute("viewBox", "0 0 450 450");
-  await expect(page.locator("#rasterGround")).toHaveAttribute("width", "450");
-  await expect(page.locator("#rasterGround")).toHaveAttribute("height", "450");
-  await expect(page.locator("#rasterGround")).toHaveAttribute(
-    "mask",
-    "url(#groundBlend)",
-  );
-  await expect(page.locator("#rasterGround")).toHaveAttribute(
-    "href",
-    /garden-[\w-]+\.png$/,
-  );
+  await expect(page.locator("#rasterGround")).toHaveCount(0);
+  await expect(page.locator(".camera-controls")).toHaveCount(0);
   await expect(
     page.locator(".landscape-pattern image").first(),
-  ).toHaveAttribute("href", /garden-expanded-[\w-]+\.png$/);
+  ).toHaveAttribute("href", /grass-tile-[\w-]+\.png$/);
+  await expect(page.locator(".scenery-prop").first()).toHaveAttribute(
+    "href",
+    /^blob:/,
+  );
+  expect(
+    await page
+      .locator("#mapDecor")
+      .evaluate((node) => getComputedStyle(node).display),
+  ).not.toBe("none");
   const stats = await page.locator(".stats").boundingBox();
   const dock = await page.locator(".dock").boundingBox();
   const client = await context.newCDPSession(page);
@@ -83,6 +84,13 @@ test("fullscreen square world, native pan/tap separation and fixed HUD", async (
   await page.getByRole("button", { name: /^Поставить ·/ }).click();
   await expect(page.locator("#money")).toHaveText("275");
   await expect(page.locator(".tower")).toHaveCount(1);
+  await page.locator(".tower").press("Enter");
+  expect(
+    await page
+      .locator(".tower")
+      .evaluate((node) => getComputedStyle(node).outlineStyle),
+  ).toBe("none");
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   // Focusing a button in the floating sheet must not scroll the scene or its HUD.
   expect(await page.locator(".stats").boundingBox()).toEqual(stats);
   expect(await page.locator(".dock").boundingBox()).toEqual(dock);
@@ -95,7 +103,7 @@ test("fullscreen square world, native pan/tap separation and fixed HUD", async (
   await client.detach();
 });
 
-test("real two-finger pinch keeps its focal point; limits, reset and rotation", async ({
+test("real two-finger pinch keeps its focal point; limits and rotation without camera buttons", async ({
   page,
   context,
 }) => {
@@ -124,32 +132,14 @@ test("real two-finger pinch keeps its focal point; limits, reset and rotation", 
   expect(after.x).toBeCloseTo(before.x, 1);
   expect(after.y).toBeCloseTo(before.y, 1);
   await expect(page.locator(".sheet.open")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Вернуть поле в центр", exact: true })
-    .click();
-  await expect.poll(() => zoom(page)).toBe(1);
-  const plus = page.getByRole("button", {
-    name: "Увеличить поле",
-    exact: true,
-  });
-  for (let i = 0; i < 6; i++)
-    if (await plus.isEnabled()) {
-      await plus.click();
-      await settle(page);
-    }
-  await expect.poll(() => zoom(page)).toBe(3);
-  await expect(plus).toBeDisabled();
-  const minus = page.getByRole("button", {
-    name: "Уменьшить поле",
-    exact: true,
-  });
-  for (let i = 0; i < 10; i++)
-    if (await minus.isEnabled()) {
-      await minus.click();
-      await settle(page);
-    }
+  await page.mouse.move(195, 425);
+  await page.mouse.wheel(0, -1800);
+  await expect.poll(() => zoom(page)).toBe(2.4);
+  for (let i = 0; i < 7; i++) {
+    await page.mouse.wheel(0, 100);
+    await settle(page);
+  }
   await expect.poll(() => zoom(page)).toBe(0.6);
-  await expect(minus).toBeDisabled();
   await page.setViewportSize({ width: 844, height: 390 });
   await settle(page);
   const board = await page.locator(".camera-world").boundingBox();
@@ -160,10 +150,7 @@ test("real two-finger pinch keeps its focal point; limits, reset and rotation", 
     width: 844,
     height: 390,
   });
-  await page
-    .getByRole("button", { name: "Вернуть поле в центр", exact: true })
-    .click();
-  await expect.poll(() => zoom(page)).toBe(1);
+  expect(await zoom(page)).toBe(0.6);
   await client.detach();
 });
 
@@ -183,9 +170,8 @@ test("ability aiming uses world coordinates after pan and zoom; canceled touches
   await touch(client, "touchCancel", []);
   await settle(page);
   await expect(page.locator(".scene-viewport")).not.toHaveClass(/dragging/);
-  await page
-    .getByRole("button", { name: "Увеличить поле", exact: true })
-    .click();
+  await page.mouse.move(195, 425);
+  await page.mouse.wheel(0, -120);
   await settle(page);
   await page.getByRole("button", { name: "Волна 1", exact: true }).click();
   await expect(page.locator(".enemy").first()).toBeVisible();
